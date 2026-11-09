@@ -42,7 +42,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -62,7 +62,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                         decoration: BoxDecoration(
                           gradient: isSelected ? AppTheme.primaryGradient : null,
                           color: isSelected ? null : (isDark ? AppTheme.darkCard : Colors.white),
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusControl),
                           border: Border.all(
                             color: isSelected ? Colors.transparent : (isDark ? AppTheme.darkBorder : const Color(0xFFE5E9F0)),
                             width: 1,
@@ -93,7 +93,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
 
             // Student Hero Info Card
             GradientCard(
-              colors: const [Color(0xFF6C3CE9), Color(0xFF8E24AA)],
+              colors: const [Color(0xFF2563EB), Color(0xFF1D4ED8)],
               child: Column(
                 children: [
                   Row(
@@ -163,7 +163,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn().slideY(begin: 0.05),
+            ),
             const SizedBox(height: 16),
 
             // Stat Metrics
@@ -193,11 +193,11 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                   subtitle: 'Out of 42',
                 ),
               ],
-            ).animate().fadeIn(delay: 100.ms),
+            ),
             const SizedBox(height: 24),
 
             // Academic modules quick tiles
-            const SectionHeader(title: '📚 Academic & Performance Services'),
+            const SectionHeader(title: 'Academic & Performance Services', icon: Icons.school_outlined),
             const SizedBox(height: 12),
             _AcademicTile(
               icon: Icons.bar_chart_rounded,
@@ -205,61 +205,61 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
               subtitle: 'Current GPA: ${child.gpa.toStringAsFixed(2)} • Top 5% standing',
               color: AppTheme.blue,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GradesScreen())),
-            ).animate().fadeIn(delay: 120.ms),
+            ),
             _AcademicTile(
               icon: Icons.description_outlined,
               label: 'Terminal Report Card',
               subtitle: 'Official digital marksheet & teacher remarks',
               color: AppTheme.purple,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportCardScreen())),
-            ).animate().fadeIn(delay: 160.ms),
+            ),
             _AcademicTile(
               icon: Icons.how_to_reg_rounded,
               label: 'Attendance Log',
               subtitle: '${(child.attendance * 100).toInt()}% total attendance across subjects',
               color: AppTheme.green,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
-            ).animate().fadeIn(delay: 200.ms),
+            ),
             _AcademicTile(
               icon: Icons.assignment_outlined,
               label: 'Assignments & Homework',
               subtitle: '${api.assignments.where((a) => !a.isCompleted).length} tasks pending submission',
               color: AppTheme.primary,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssignmentsScreen())),
-            ).animate().fadeIn(delay: 240.ms),
+            ),
             _AcademicTile(
               icon: Icons.quiz_outlined,
               label: 'Exams & Term Schedules',
               subtitle: '${api.exams.length} scheduled tests & examinations',
               color: AppTheme.coral,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamsScreen())),
-            ).animate().fadeIn(delay: 260.ms),
+            ),
             _AcademicTile(
               icon: Icons.calendar_month_rounded,
               label: 'Weekly Class Routine',
               subtitle: 'Period timings, room numbers & faculty schedule',
               color: AppTheme.teal,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduleScreen())),
-            ).animate().fadeIn(delay: 280.ms),
+            ),
             _AcademicTile(
               icon: Icons.health_and_safety_outlined,
               label: 'Health & Immunization Record',
               subtitle: 'Medical profile, allergies & nurse clinic visits',
               color: AppTheme.green,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HealthScreen())),
-            ).animate().fadeIn(delay: 320.ms),
+            ),
             _AcademicTile(
               icon: Icons.emoji_events_outlined,
               label: 'Behavior & Merits',
               subtitle: 'Merit points, conduct timeline & commendations',
               color: AppTheme.orange,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BehaviorScreen())),
-            ).animate().fadeIn(delay: 360.ms),
+            ),
             const SizedBox(height: 24),
 
             // Subject Grade list
             SectionHeader(
-              title: '📖 Subject Performance',
+              title: 'Subject Performance', icon: Icons.menu_book_outlined,
               actionLabel: 'Details',
               onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GradesScreen())),
             ),
@@ -275,7 +275,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusControl)),
         contentPadding: const EdgeInsets.all(20),
         content: Column(
           mainAxisSize: MainAxisSize.min,

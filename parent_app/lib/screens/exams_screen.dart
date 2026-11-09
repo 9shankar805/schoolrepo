@@ -22,7 +22,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
     final nextExam = exams.isNotEmpty ? exams.first : null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Exams & Assessments'),
         leading: CircleIconButton(
@@ -44,14 +44,14 @@ class _ExamsScreenState extends State<ExamsScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Next Exam Hero Countdown
             if (nextExam != null)
               GradientCard(
-                colors: const [Color(0xFFEA580C), Color(0xFFF97316)],
+                colors: const [Color(0xFF2563EB), Color(0xFF1D4ED8)],
                 child: Column(
                   children: [
                     Row(
@@ -140,14 +140,14 @@ class _ExamsScreenState extends State<ExamsScreen> {
                     ),
                   ],
                 ),
-              ).animate().fadeIn().slideY(begin: 0.05),
+              ),
             const SizedBox(height: 24),
 
             // Timetable Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SectionHeader(title: '📅 Examination Schedule'),
+                const SectionHeader(title: 'Examination Schedule', icon: Icons.calendar_today_outlined),
                 Text(
                   '${child.grade} - Section "${child.section}"',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.primary),
@@ -221,7 +221,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
                 border: Border.all(color: const Color(0xFFFDE68A)),
               ),
               child: const Text(
-                '⚠️ Candidate must present this digital or printed pass along with School ID Card. Electronic devices are strictly prohibited.',
+                'Candidate must present this digital or printed pass along with School ID Card. Electronic devices are strictly prohibited.',
                 style: TextStyle(fontSize: 10, color: Color(0xFF92400E), fontWeight: FontWeight.w600),
               ),
             ),
@@ -248,6 +248,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
   }
 
   void _showExamDetailSheet(BuildContext context, dynamic child, ExamItem exam) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -280,7 +281,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),

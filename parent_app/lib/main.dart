@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:parent_app/screens/home_screen.dart';
+import 'package:parent_app/screens/main_shell.dart';
 import 'package:provider/provider.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
@@ -54,7 +56,8 @@ class ParentsAppState extends State<ParentsApp> {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: _themeProvider.themeMode,
-        home: const SplashScreen(),
+        // home: const SplashScreen(),
+        home: MainShell(),
       ),
     );
   }

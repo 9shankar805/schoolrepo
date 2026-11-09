@@ -26,7 +26,7 @@ class _ReportCardScreenState extends State<ReportCardScreen> {
     final card = reportCards[_selectedCardIndex.clamp(0, reportCards.length - 1)];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Terminal Report Card'),
         leading: CircleIconButton(
@@ -1026,7 +1026,7 @@ class _ReportCardScreenState extends State<ReportCardScreen> {
             _VerificationLine(label: 'Candidate', value: child.name),
             _VerificationLine(label: 'Examination', value: card.term),
             _VerificationLine(label: 'GPA Score', value: '${card.gpa.toStringAsFixed(2)} (${card.overallGrade})'),
-            const _VerificationLine(label: 'Status', value: 'Legally Valid & Verified ✅'),
+            const _VerificationLine(label: 'Status', value: 'Legally Valid & Verified'),
           ],
         ),
         actions: [

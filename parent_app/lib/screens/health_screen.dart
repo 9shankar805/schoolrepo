@@ -31,7 +31,7 @@ class _HealthScreenState extends State<HealthScreen> {
     final health = api.healthProfile;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Health & Medical Records'),
         leading: CircleIconButton(
@@ -42,13 +42,13 @@ class _HealthScreenState extends State<HealthScreen> {
         leadingWidth: 60,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Vitals Hero Card
             GradientCard(
-              colors: const [Color(0xFF0D9488), Color(0xFF14B8A6)],
+              colors: const [Color(0xFF2563EB), Color(0xFF1D4ED8)],
               child: Column(
                 children: [
                   Row(
@@ -65,7 +65,7 @@ class _HealthScreenState extends State<HealthScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.white30),
                         ),
-                        child: const Text('Fit for Sports & Activities ✅', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                        child: const Text('Fit for Sports & Activities', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
                       ),
                     ],
                   ),
@@ -81,7 +81,7 @@ class _HealthScreenState extends State<HealthScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn().slideY(begin: 0.05),
+            ),
             const SizedBox(height: 16),
 
             // Emergency Contacts Card
@@ -90,7 +90,7 @@ class _HealthScreenState extends State<HealthScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('🚨 Emergency & Physician Contacts', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                  const Text('Emergency & Physician Contacts', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -153,7 +153,7 @@ class _HealthScreenState extends State<HealthScreen> {
             const SizedBox(height: 20),
 
             // Allergies & Special Care Section
-            const SectionHeader(title: '⚠️ Allergies & Medical Warnings'),
+            const SectionHeader(title: 'Allergies & Medical Warnings', icon: Icons.warning_amber_rounded),
             const SizedBox(height: 10),
             AppCard(
               padding: const EdgeInsets.all(14),
@@ -201,7 +201,7 @@ class _HealthScreenState extends State<HealthScreen> {
             const SizedBox(height: 24),
 
             // Immunizations & Vaccinations List
-            const SectionHeader(title: '💉 Immunization & Health Cards'),
+            const SectionHeader(title: 'Immunization & Health Cards', icon: Icons.vaccines_outlined),
             const SizedBox(height: 12),
             ...health.vaccinations.map((vac) {
               final isDone = vac.status.toLowerCase() == 'completed';

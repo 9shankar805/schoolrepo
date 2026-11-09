@@ -29,7 +29,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
         leadingWidth: 60,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -70,7 +70,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
             ),
             const SizedBox(height: 20),
 
-            const SectionHeader(title: '📅 Scheduled Meetings'),
+            const SectionHeader(title: 'Scheduled Meetings', icon: Icons.calendar_today_outlined),
             const SizedBox(height: 12),
             if (meetings.isEmpty)
               const EmptyStateWidget(
@@ -139,10 +139,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: titleCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Discussion Topic / Subject',
                   filled: true,
-                  fillColor: AppTheme.lightBg,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : AppTheme.lightBg,
                 ),
               ),
               const SizedBox(height: 12),
@@ -223,10 +223,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
               TextField(
                 controller: agendaCtrl,
                 maxLines: 2,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Specific Agenda or Questions (Optional)',
                   filled: true,
-                  fillColor: AppTheme.lightBg,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : AppTheme.lightBg,
                 ),
               ),
               const SizedBox(height: 20),

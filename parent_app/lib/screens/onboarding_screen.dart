@@ -19,32 +19,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Stay Close\nTo Your\nChild\'s Journey!',
       subtitle: 'Monitor grades, attendance and activities all in one place.',
       icon: Icons.family_restroom_rounded,
-      gradient: [Color(0xFF6A1B9A), Color(0xFFAB47BC)],
+      gradient: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
     ),
     _OnboardData(
       title: 'Track Grades\n& Academic\nProgress',
       subtitle: 'Get real-time updates on your child\'s performance and GPA.',
       icon: Icons.bar_chart_rounded,
-      gradient: [Color(0xFF1565C0), Color(0xFF0288D1)],
+      gradient: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
     ),
     _OnboardData(
       title: 'Know Where\nYour Child\nIs, Always',
       subtitle: 'Live bus tracking and instant arrival notifications.',
       icon: Icons.directions_bus_rounded,
-      gradient: [Color(0xFF00897B), Color(0xFF26A69A)],
+      gradient: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
     ),
     _OnboardData(
       title: 'Chat With\nTeachers\nDirectly',
       subtitle: 'Instant messaging with teachers and school staff.',
       icon: Icons.chat_bubble_rounded,
-      gradient: [Color(0xFFE65100), Color(0xFFFF8F00)],
+      gradient: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -108,7 +108,7 @@ class _OnboardPage extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(40),
+                borderRadius: BorderRadius.circular(AppTheme.radiusOuter),
               ),
               child: Stack(
                 alignment: Alignment.center,
@@ -126,17 +126,17 @@ class _OnboardPage extends StatelessWidget {
                   Icon(data.icon, size: 120, color: Colors.white.withValues(alpha: 0.9)),
                 ],
               ),
-            ).animate().scale(duration: 500.ms, curve: Curves.easeOut),
+            ),
           ),
           const SizedBox(height: 36),
           Text(data.title, textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800,
-                color: AppTheme.dark, height: 1.2),
-          ).animate().slideY(begin: 0.2, duration: 400.ms).fadeIn(),
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppTheme.dark, height: 1.2),
+          ),
           const SizedBox(height: 14),
           Text(data.subtitle, textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 14, color: AppTheme.grey, height: 1.6),
-          ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+          ),
           const SizedBox(height: 32),
         ],
       ),

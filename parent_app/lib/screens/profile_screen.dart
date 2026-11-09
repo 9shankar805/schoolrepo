@@ -56,7 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           children: [
             // Parent Profile Hero Card
@@ -103,12 +103,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 2),
                   Text(parentEmail, style: const TextStyle(fontSize: 12, color: AppTheme.grey)),
                   const SizedBox(height: 8),
-                  const PillBadge(label: 'Verified Parent / Guardian', color: AppTheme.primaryLight, textColor: AppTheme.primary),
+                  PillBadge(
+                    label: 'Verified Parent / Guardian',
+                    color: isDark ? AppTheme.primary.withValues(alpha: 0.22) : AppTheme.primaryLight,
+                    textColor: isDark ? AppTheme.accent : AppTheme.primary,
+                  ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppTheme.lightBg,
+                      color: isDark ? AppTheme.darkSurface : AppTheme.lightBg,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
@@ -126,7 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
 
             // Registered Children Section
-            const SectionHeader(title: '👨‍👩‍👧‍👦 Registered Students'),
+            const SectionHeader(title: 'Registered Students', icon: Icons.family_restroom_outlined),
             const SizedBox(height: 12),
             ...children.map((c) {
               return Container(
@@ -176,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
 
             // App Services Navigation
-            const SectionHeader(title: '🔗 School Portal Services'),
+            const SectionHeader(title: 'School Portal Services', icon: Icons.school_outlined),
             const SizedBox(height: 12),
             AppCard(
               padding: EdgeInsets.zero,
@@ -224,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
 
             // System Preferences & Security
-            const SectionHeader(title: '⚙️ App Preferences & Support'),
+            const SectionHeader(title: 'App Preferences & Support', icon: Icons.settings_outlined),
             const SizedBox(height: 12),
             AppCard(
               padding: EdgeInsets.zero,
@@ -312,19 +316,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             TextField(
               controller: nameCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Full Name',
                 filled: true,
-                fillColor: AppTheme.lightBg,
+                fillColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : AppTheme.lightBg,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: emailCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Email Address',
                 filled: true,
-                fillColor: AppTheme.lightBg,
+                fillColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : AppTheme.lightBg,
               ),
             ),
           ],

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../data/app_data.dart';
@@ -7,29 +6,12 @@ import '../providers/api_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/common_widgets.dart';
 
-class FeesScreen extends StatefulWidget {
+class FeesScreen extends StatelessWidget {
   const FeesScreen({super.key});
-  @override
-  State<FeesScreen> createState() => _FeesScreenState();
-}
-
-class _FeesScreenState extends State<FeesScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabCtrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final api = context.watch<ApiProvider>();
     final fees = api.fees;
     final child = api.selectedChild;
@@ -42,135 +24,169 @@ class _FeesScreenState extends State<FeesScreen> with SingleTickerProviderStateM
 
     final canPop = Navigator.canPop(context);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Fee Ledger & Payments'),
-        automaticallyImplyLeading: false,
-        leading: canPop
-            ? CircleIconButton(
-                icon: Icons.arrow_back_ios_new,
-                onTap: () => Navigator.pop(context),
-                size: 38,
-              )
-            : null,
-        leadingWidth: canPop ? 60 : null,
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: GradientCard(
-              colors: const [Color(0xFF4F46E5), Color(0xFF2563EB)],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Account Ledger • ${child.name}',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white30),
-                        ),
-                        child: Text(
-                          totalPending > 0 ? 'Payment Due' : 'All Settled ✅',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Total Outstanding Due', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'NPR ${totalPending.toStringAsFixed(2)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Total Paid (Academic Year)', style: TextStyle(color: Colors.white70, fontSize: 10)),
-                          Text('NPR ${totalPaid.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-                      if (totalPending > 0)
-                        ElevatedButton.icon(
-                          onPressed: () => _showPaymentSheet(context, pendingList.first),
-                          icon: const Icon(Icons.payment, size: 16),
-                          label: const Text('Pay Dues', style: TextStyle(fontWeight: FontWeight.w900)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF4F46E5),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            elevation: 0,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: const Text('Fee Ledger & Payments'),
+          automaticallyImplyLeading: false,
+          leading: canPop
+              ? CircleIconButton(
+                  icon: Icons.arrow_back_ios_new,
+                  onTap: () => Navigator.pop(context),
+                  size: 38,
+                )
+              : null,
+          leadingWidth: canPop ? 60 : null,
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: GradientCard(
+                colors: const [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Account Ledger • ${child.name}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                         ),
-                    ],
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white30),
+                          ),
+                          child: Text(
+                            totalPending > 0 ? 'Payment Due' : 'All Settled',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Total Outstanding Due', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'NPR ${totalPending.toStringAsFixed(2)}',
+                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Total Paid (Academic Year)', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                              Text('NPR ${totalPaid.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+                            ],
+                          ),
+                        ),
+                        if (totalPending > 0 && pendingList.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => _showPaymentSheet(context, pendingList.first),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.payment, size: 15, color: Color(0xFF2563EB)),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Pay Dues',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12,
+                                      color: Color(0xFF2563EB),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? AppTheme.darkBorder : AppTheme.border,
+                    width: 1.0,
                   ),
+                ),
+              ),
+              child: TabBar(
+                labelColor: AppTheme.primary,
+                unselectedLabelColor: isDark ? Colors.white54 : AppTheme.grey,
+                indicatorColor: AppTheme.primary,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                tabs: [
+                  Tab(text: 'Pending Invoices (${pendingList.length})'),
+                  Tab(text: 'Payment History (${paidList.length})'),
                 ],
               ),
-            ).animate().fadeIn().slideY(begin: 0.05),
-          ),
-          const SizedBox(height: 12),
-
-          TabBar(
-            controller: _tabCtrl,
-            labelColor: AppTheme.primary,
-            unselectedLabelColor: AppTheme.grey,
-            indicatorColor: AppTheme.primary,
-            indicatorWeight: 3,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-            tabs: [
-              Tab(text: 'Pending Invoices (${pendingList.length})'),
-              Tab(text: 'Payment History (${paidList.length})'),
-            ],
-          ),
-
-          Expanded(
-            child: TabBarView(
-              controller: _tabCtrl,
-              children: [
-                _buildInvoiceList(pendingList, isPending: true),
-                _buildInvoiceList(paidList, isPending: false),
-              ],
             ),
-          ),
-        ],
+
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _buildInvoiceList(context, pendingList, isPending: true),
+                  _buildInvoiceList(context, paidList, isPending: false),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInvoiceList(List<FeeRecord> list, {required bool isPending}) {
+  Widget _buildInvoiceList(BuildContext context, List<FeeRecord> list, {required bool isPending}) {
     if (list.isEmpty) {
       return EmptyStateWidget(
         icon: isPending ? Icons.verified_outlined : Icons.receipt_long_outlined,
-        title: isPending ? 'No pending fees! 🎉' : 'No past payment records',
+        title: isPending ? 'No pending fees' : 'No past payment records',
         subtitle: isPending ? 'All school fee dues are fully settled.' : 'Your receipts will appear here once paid.',
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       itemCount: list.length,
-      itemBuilder: (context, idx) {
+      itemBuilder: (ctx, idx) {
         final f = list[idx];
         return _FeeCard(
           fee: f,
           onPay: () => _showPaymentSheet(context, f),
           onReceipt: () => _showReceiptDialog(context, f),
-        ).animate().fadeIn(delay: (idx * 50).ms);
+        );
       },
     );
   }
@@ -418,7 +434,7 @@ class _FeesScreenState extends State<FeesScreen> with SingleTickerProviderStateM
             _ReceiptLine(label: 'Paid Date', value: fee.paidDate.isNotEmpty ? fee.paidDate : '2026-08-25'),
             _ReceiptLine(label: 'Payment Method', value: fee.paymentMethod),
             const _ReceiptLine(label: 'Transaction ID', value: 'TXN-NSH-98472910'),
-            const _ReceiptLine(label: 'Status', value: 'Settled & Verified ✅'),
+            const _ReceiptLine(label: 'Status', value: 'Settled & Verified'),
           ],
         ),
         actions: [
@@ -451,6 +467,7 @@ class _FeeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isPending = fee.status.toLowerCase() == 'pending';
 
     return Container(
@@ -501,7 +518,7 @@ class _FeeCard extends StatelessWidget {
                     const Text('Amount', style: TextStyle(fontSize: 10, color: AppTheme.grey)),
                     Text(
                       'NPR ${fee.amount.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.dark),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.dark),
                     ),
                   ],
                 ),
@@ -510,6 +527,7 @@ class _FeeCard extends StatelessWidget {
                     onPressed: onPay,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      minimumSize: const Size(0, 36),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: const Text('Pay Now', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -520,6 +538,8 @@ class _FeeCard extends StatelessWidget {
                     icon: const Icon(Icons.receipt_outlined, size: 14),
                     label: const Text('Receipt', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                     style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      minimumSize: const Size(0, 36),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -549,15 +569,21 @@ class _PaymentOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? brandColor.withValues(alpha: 0.08) : Colors.white,
+          color: isSelected
+              ? brandColor.withValues(alpha: isDark ? 0.2 : 0.08)
+              : (isDark ? AppTheme.darkSurface : Colors.white),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isSelected ? brandColor : const Color(0xFFE2E8F0), width: isSelected ? 2 : 1),
+          border: Border.all(
+            color: isSelected ? brandColor : (isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
+            width: isSelected ? 2 : 1,
+          ),
         ),
         child: Row(
           children: [

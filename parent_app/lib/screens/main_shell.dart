@@ -10,6 +10,7 @@ import 'profile_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
+
   @override
   State<MainShell> createState() => _MainShellState();
 }
@@ -32,68 +33,66 @@ class _MainShellState extends State<MainShell> {
     final pendingFees = api.fees.where((f) => f.status.toLowerCase() == 'pending').length;
     final unreadMsgs = api.conversations.fold<int>(0, (sum, c) => sum + c.unreadCount);
 
+    final navBg = isDark ? AppTheme.darkCard : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkCard : Colors.white,
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: isDark ? AppTheme.darkBorder : const Color(0xFFEFF2F7),
-              width: 1.2,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: navBg,
+          border: Border(top: BorderSide(color: borderColor, width: 1.0)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              children: [
+                _NavItem(
+                  icon: Icons.dashboard_outlined,
+                  activeIcon: Icons.dashboard_rounded,
+                  label: 'Home',
+                  index: 0,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                ),
+                _NavItem(
+                  icon: Icons.school_outlined,
+                  activeIcon: Icons.school_rounded,
+                  label: 'Student',
+                  index: 1,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                ),
+                _NavItem(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  activeIcon: Icons.chat_bubble_rounded,
+                  label: 'Chat',
+                  index: 2,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                  badge: unreadMsgs > 0 ? unreadMsgs : null,
+                ),
+                _NavItem(
+                  icon: Icons.account_balance_wallet_outlined,
+                  activeIcon: Icons.account_balance_wallet_rounded,
+                  label: 'Fees',
+                  index: 3,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                  badge: pendingFees > 0 ? pendingFees : null,
+                ),
+                _NavItem(
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  label: 'Profile',
+                  index: 4,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.grid_view_rounded,
-                label: 'Home',
-                index: 0,
-                current: _currentIndex,
-                onTap: (i) => setState(() => _currentIndex = i),
-              ),
-              _NavItem(
-                icon: Icons.school_rounded,
-                label: 'Student',
-                index: 1,
-                current: _currentIndex,
-                onTap: (i) => setState(() => _currentIndex = i),
-              ),
-              _NavItem(
-                icon: Icons.chat_bubble_rounded,
-                label: 'Chat',
-                index: 2,
-                current: _currentIndex,
-                onTap: (i) => setState(() => _currentIndex = i),
-                badge: unreadMsgs > 0 ? unreadMsgs : null,
-              ),
-              _NavItem(
-                icon: Icons.account_balance_wallet_rounded,
-                label: 'Fees',
-                index: 3,
-                current: _currentIndex,
-                onTap: (i) => setState(() => _currentIndex = i),
-                badge: pendingFees > 0 ? pendingFees : null,
-              ),
-              _NavItem(
-                icon: Icons.person_rounded,
-                label: 'Profile',
-                index: 4,
-                current: _currentIndex,
-                onTap: (i) => setState(() => _currentIndex = i),
-              ),
-            ],
           ),
         ),
       ),
@@ -103,6 +102,7 @@ class _MainShellState extends State<MainShell> {
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
   final int index, current;
   final ValueChanged<int> onTap;
@@ -110,6 +110,7 @@ class _NavItem extends StatelessWidget {
 
   const _NavItem({
     required this.icon,
+    required this.activeIcon,
     required this.label,
     required this.index,
     required this.current,
@@ -120,74 +121,64 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = index == current;
-    if (isSelected) {
-      return GestureDetector(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = AppTheme.primary;
+    final inactiveColor = isDark ? const Color(0xFF9CA3AF) : AppTheme.textMuted;
+
+    return Expanded(
+      child: InkWell(
         onTap: () => onTap(index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.35),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              )
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+        child: SizedBox(
+          height: 60,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.white, size: 18),
-              const SizedBox(width: 6),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    isSelected ? activeIcon : icon,
+                    color: isSelected ? activeColor : inactiveColor,
+                    size: 22,
+                  ),
+                  if (badge != null && badge! > 0)
+                    Positioned(
+                      right: -8,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppTheme.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Center(
+                          child: Text(
+                            badge! > 9 ? '9+' : '$badge',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 3),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  letterSpacing: -0.2,
+                style: TextStyle(
+                  color: isSelected ? activeColor : inactiveColor,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 11,
+                  letterSpacing: -0.1,
                 ),
               ),
             ],
           ),
         ),
-      );
-    }
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Icon(icon, color: AppTheme.grey, size: 22),
-          ),
-          if (badge != null && badge! > 0)
-            Positioned(
-              right: 6,
-              top: 4,
-              child: Container(
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  color: AppTheme.primary,
-                  shape: BoxShape.circle,
-                ),
-                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                child: Center(
-                  child: Text(
-                    badge! > 9 ? '9+' : '$badge',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

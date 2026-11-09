@@ -17,6 +17,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final api = context.watch<ApiProvider>();
     final child = api.selectedChild;
     final records = api.attendance;
@@ -24,7 +25,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final double overall = child.attendance;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Student Attendance'),
         leading: CircleIconButton(
@@ -45,7 +46,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -74,7 +75,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          overall >= 0.85 ? '✅ Excellent Standing (Above 85% min)' : '⚠️ Low attendance warning',
+                          overall >= 0.85 ? 'Excellent Standing (Above 85% min)' : 'Low attendance warning',
                           style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
                         ),
                       ],
@@ -107,7 +108,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn().slideY(begin: 0.05),
+            ),
             const SizedBox(height: 16),
 
             // Quick Request Leave Action Bar
@@ -124,7 +125,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     height: 40,
                     decoration: BoxDecoration(
                       color: AppTheme.orange.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusControl),
                     ),
                     child: const Icon(Icons.event_busy_rounded, color: AppTheme.orange, size: 22),
                   ),
@@ -146,7 +147,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
             // Monthly Calendar Section Header
             SectionHeader(
-              title: '📅 Monthly Calendar',
+              title: 'Monthly Calendar',
+              icon: Icons.calendar_month_outlined,
               actionLabel: _selectedMonth,
               onAction: () => _pickMonth(context),
             ),
@@ -172,7 +174,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             const SizedBox(height: 24),
 
             // Subject-wise Breakdown
-            const SectionHeader(title: '📊 Subject-wise Attendance'),
+            const SectionHeader(
+              title: 'Subject-wise Attendance',
+              icon: Icons.bar_chart_rounded,
+            ),
             const SizedBox(height: 12),
             ...records.map((rec) {
               final pct = rec.total > 0 ? (rec.present / rec.total) : 0.9;
@@ -244,6 +249,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildCalendarGrid(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Nepal standard week starts with Sunday ('Sun') and Saturday ('Sat') is the weekend
     final weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -306,7 +312,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               textCol = AppTheme.orange;
             } else {
               textCol = const Color(0xFF94A3B8);
-              bg = const Color(0xFFF1F5F9);
+              bg = isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9);
             }
 
             return InkWell(
@@ -333,6 +339,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showDayDetailSheet(BuildContext context, int dayNum, int status) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     String statusTitle;
     Color statusColor;
     String statusDesc;
@@ -402,7 +409,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),

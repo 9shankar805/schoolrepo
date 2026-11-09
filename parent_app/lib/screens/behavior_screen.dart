@@ -22,7 +22,7 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
     final int totalPoints = entries.fold<int>(0, (sum, e) => sum + e.points);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Behavior & Conduct'),
         leading: CircleIconButton(
@@ -33,13 +33,13 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
         leadingWidth: 60,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Merit Score Hero Card
             GradientCard(
-              colors: const [Color(0xFF6C3CE9), Color(0xFF00D2D3)],
+              colors: const [Color(0xFF2563EB), Color(0xFF1D4ED8)],
               child: Column(
                 children: [
                   Row(
@@ -53,10 +53,10 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusInner),
                           border: Border.all(color: Colors.white30),
                         ),
-                        child: const Text('Exemplary Status 🌟', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                        child: const Text('Exemplary Status', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
                       ),
                     ],
                   ),
@@ -71,11 +71,14 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn().slideY(begin: 0.05),
+            ),
             const SizedBox(height: 20),
 
             // Badges & Honors Gallery
-            const SectionHeader(title: '🏅 Badges & Honors Won'),
+            const SectionHeader(
+              title: 'Badges & Honors Won',
+              icon: Icons.military_tech_outlined,
+            ),
             const SizedBox(height: 10),
             const SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -93,7 +96,10 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
             ),
             const SizedBox(height: 24),
 
-            const SectionHeader(title: '🏆 Commendations & Educator Notes'),
+            const SectionHeader(
+              title: 'Commendations & Educator Notes',
+              icon: Icons.workspace_premium_outlined,
+            ),
             const SizedBox(height: 12),
             if (entries.isEmpty)
               const EmptyStateWidget(
@@ -113,6 +119,7 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
   }
 
   void _showEntryDetail(BuildContext context, BehaviorEntry entry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -160,7 +167,7 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(

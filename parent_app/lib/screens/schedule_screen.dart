@@ -73,7 +73,7 @@ class _DayRoutineView extends StatelessWidget {
     const periods = AppData.schedule;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -165,7 +165,7 @@ class _DayRoutineView extends StatelessWidget {
                   ],
                 ),
               ),
-            ).animate().fadeIn(delay: (idx * 50).ms);
+            );
           }),
         ],
       ),

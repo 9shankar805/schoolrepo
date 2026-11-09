@@ -34,7 +34,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Faculty Messages'),
         automaticallyImplyLeading: false,
@@ -42,7 +42,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: TextField(
               controller: _searchCtrl,
               onChanged: (val) => setState(() => _searchQuery = val),
@@ -69,7 +69,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     subtitle: 'Start a message conversation with any subject teacher.',
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                     itemCount: convs.length,
                     itemBuilder: (context, idx) {
                       final c = convs[idx];
@@ -169,7 +169,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             ],
                           ),
                         ),
-                      ).animate().fadeIn(delay: (idx * 40).ms);
+                      );
                     },
                   ),
           ),
@@ -256,7 +256,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         leading: CircleIconButton(
           icon: Icons.arrow_back_ios_new,
@@ -332,14 +332,21 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
   }
 
   Widget _buildInputBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppTheme.darkCard : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppTheme.darkBorder : const Color(0xFFEFF2F7),
+              width: 1,
+            ),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -359,10 +366,15 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
               child: TextField(
                 controller: _msgCtrl,
                 textCapitalization: TextCapitalization.sentences,
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppTheme.dark,
+                  fontSize: 13,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Type your message...',
+                  hintStyle: const TextStyle(color: AppTheme.grey, fontSize: 13),
                   filled: true,
-                  fillColor: AppTheme.lightBg,
+                  fillColor: isDark ? AppTheme.darkSurface : AppTheme.lightBg,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
@@ -393,22 +405,23 @@ class _QuickPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppTheme.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4),
+            BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03), blurRadius: 4),
           ],
         ),
         child: Text(
           text,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1E3A8A)),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF1E3A8A)),
         ),
       ),
     );
@@ -422,6 +435,7 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMe = message.isMe;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -430,17 +444,17 @@ class _MessageBubble extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isMe ? AppTheme.primary : Colors.white,
+          color: isMe ? AppTheme.primary : (isDark ? AppTheme.darkCard : Colors.white),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
             bottomLeft: Radius.circular(isMe ? 18 : 4),
             bottomRight: Radius.circular(isMe ? 4 : 18),
           ),
-          border: isMe ? null : Border.all(color: const Color(0xFFE5E9F0)),
+          border: isMe ? null : Border.all(color: isDark ? AppTheme.darkBorder : const Color(0xFFE5E9F0)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -452,7 +466,7 @@ class _MessageBubble extends StatelessWidget {
             Text(
               message.message,
               style: TextStyle(
-                color: isMe ? Colors.white : AppTheme.dark,
+                color: isMe ? Colors.white : (isDark ? Colors.white : AppTheme.dark),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -464,7 +478,7 @@ class _MessageBubble extends StatelessWidget {
                 Text(
                   message.time,
                   style: TextStyle(
-                    color: isMe ? Colors.white70 : AppTheme.grey,
+                    color: isMe ? Colors.white70 : (isDark ? Colors.white54 : AppTheme.grey),
                     fontSize: 9,
                   ),
                 ),
