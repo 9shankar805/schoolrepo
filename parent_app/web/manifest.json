@@ -1,6 +1,6 @@
 {
-    "name": "parent_app",
-    "short_name": "parent_app",
+    "name": "NSHLMS Parent App",
+    "short_name": "NSHLMS Parent",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

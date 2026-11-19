@@ -1,6 +1,6 @@
 {
-    "name": "teacher_app",
-    "short_name": "teacher_app",
+    "name": "NSHLMS Teacher App",
+    "short_name": "NSHLMS Teacher",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

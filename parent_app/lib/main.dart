@@ -51,7 +51,7 @@ class ParentsAppState extends State<ParentsApp> {
         ChangeNotifierProvider(create: (_) => ApiProvider()),
       ],
       child: MaterialApp(
-        title: 'Nepal School Hub - ParentLink',
+        title: 'NSHLMS Parent App',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
