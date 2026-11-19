@@ -56,14 +56,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           // Filter Tabs
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: categories.map((cat) {
                 final isSel = cat == _selectedFilter;
                 String label = cat.toUpperCase();
-                if (cat == 'bus') label = 'TRANSPORT 🚌';
-                if (cat == 'grade') label = 'ACADEMICS 📝';
-                if (cat == 'fee') label = 'FEES 💳';
+                if (cat == 'bus') label = 'TRANSPORT';
+                if (cat == 'grade') label = 'ACADEMICS';
+                if (cat == 'fee') label = 'FEES';
 
                 return GestureDetector(
                   onTap: () => setState(() => _selectedFilter = cat),
@@ -72,7 +72,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSel ? AppTheme.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusControl),
                       border: Border.all(color: isSel ? AppTheme.primary : const Color(0xFFE5E9F0)),
                     ),
                     child: Text(
@@ -96,11 +96,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     subtitle: 'New notices and school push updates will appear here.',
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                     itemCount: filtered.length,
                     itemBuilder: (context, idx) {
                       final notif = filtered[idx];
-                      return _NotificationCard(notification: notif).animate().fadeIn(delay: (idx * 40).ms);
+                      return _NotificationCard(notification: notif);
                     },
                   ),
           ),

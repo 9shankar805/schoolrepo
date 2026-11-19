@@ -43,11 +43,12 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final api = context.watch<ApiProvider>();
     final bus = api.busInfo;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Live Bus GPS Tracking'),
         leading: CircleIconButton(
@@ -73,7 +74,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -83,7 +84,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(AppTheme.radiusOuter),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.15),
@@ -249,8 +250,8 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
                       Container(
                         width: 48,
                         height: 48,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.primaryLight,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkSurface : AppTheme.primaryLight,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.person, color: AppTheme.primary, size: 26),
@@ -266,15 +267,28 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.phone, color: AppTheme.green),
-                        tooltip: 'Call Driver',
-                        onPressed: () => _makePhoneCall(bus.driverPhone),
+                      GestureDetector(
+                        onTap: () => _makePhoneCall(bus.driverPhone),
+                        child: Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: AppTheme.green.withValues(alpha: isDark ? 0.22 : 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.phone_rounded, color: AppTheme.green, size: 20),
+                        ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.sms_outlined, color: AppTheme.primary),
-                        tooltip: 'SMS Driver',
-                        onPressed: () => _sendSms(bus.driverPhone),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _sendSms(bus.driverPhone),
+                        child: Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: isDark ? 0.22 : 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.chat_bubble_rounded, color: AppTheme.primary, size: 18),
+                        ),
                       ),
                     ],
                   ),
@@ -283,7 +297,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Helper / Attendant: ${bus.helperName}', style: const TextStyle(fontSize: 11, color: AppTheme.grey)),
-                      Text('Plate: ${bus.plateNumber}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.dark)),
+                      Text('Plate: ${bus.plateNumber}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: isDark ? Colors.white70 : AppTheme.dark)),
                     ],
                   ),
                 ],
@@ -292,7 +306,10 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
             const SizedBox(height: 24),
 
             // Route Progress Stepper
-            const SectionHeader(title: '📍 Route Stops & Sequence'),
+            const SectionHeader(
+              title: 'Route Stops & Sequence',
+              icon: Icons.route_outlined,
+            ),
             const SizedBox(height: 12),
             ...bus.stops.asMap().entries.map((entry) {
               final idx = entry.key;

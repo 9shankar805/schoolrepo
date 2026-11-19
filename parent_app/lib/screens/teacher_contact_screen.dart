@@ -36,7 +36,7 @@ class _TeacherContactScreenState extends State<TeacherContactScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Faculty & Teachers'),
         leading: CircleIconButton(
@@ -49,7 +49,7 @@ class _TeacherContactScreenState extends State<TeacherContactScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: TextField(
               controller: _searchCtrl,
               onChanged: (val) => setState(() => _query = val),
@@ -76,11 +76,11 @@ class _TeacherContactScreenState extends State<TeacherContactScreen> {
                     subtitle: 'Try searching for a different subject or teacher name.',
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                     itemCount: teachers.length,
                     itemBuilder: (context, idx) {
                       final t = teachers[idx];
-                      return _TeacherCard(teacher: t).animate().fadeIn(delay: (idx * 50).ms);
+                      return _TeacherCard(teacher: t);
                     },
                   ),
           ),
@@ -118,6 +118,7 @@ class _TeacherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: AppCard(
@@ -201,7 +202,7 @@ class _TeacherCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(

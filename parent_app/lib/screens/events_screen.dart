@@ -41,7 +41,7 @@ class _EventsScreenState extends State<EventsScreen> {
           // Category Selector Pills
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: categories.map((cat) {
                 final isSel = cat == _selectedCategory;
@@ -52,7 +52,7 @@ class _EventsScreenState extends State<EventsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSel ? AppTheme.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusControl),
                       border: Border.all(color: isSel ? AppTheme.primary : const Color(0xFFE5E9F0)),
                     ),
                     child: Text(
@@ -76,11 +76,11 @@ class _EventsScreenState extends State<EventsScreen> {
                     subtitle: 'Check back later for updated school calendar announcements.',
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                     itemCount: events.length,
                     itemBuilder: (context, idx) {
                       final ev = events[idx];
-                      return _EventCard(event: ev).animate().fadeIn(delay: (idx * 40).ms);
+                      return _EventCard(event: ev);
                     },
                   ),
           ),
@@ -138,7 +138,7 @@ class _EventCardState extends State<_EventCard> {
                   Row(
                     children: [
                       _RsvpPill(
-                        label: 'Going 👍',
+                        label: 'Going',
                         isSelected: _rsvp == 'going',
                         onTap: () {
                           setState(() => _rsvp = 'going');

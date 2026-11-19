@@ -425,20 +425,27 @@ class _PayslipScreenState extends State<PayslipScreen> {
 
           // 3 Column Mini Details
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _SalaryDetailMini(
-                label: 'Basic (आधारभूत)',
-                value: 'रु. ${_formatAmount(basicSalary)}',
+              Expanded(
+                child: _SalaryDetailMini(
+                  label: 'Basic (आधारभूत)',
+                  value: 'रु. ${_formatAmount(basicSalary)}',
+                ),
               ),
-              _SalaryDetailMini(
-                label: bonus > 0 ? 'Allowances + चाडपर्व' : 'Allowances (भत्ता)',
-                value: 'रु. ${_formatAmount(allowances + bonus)}',
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SalaryDetailMini(
+                  label: bonus > 0 ? 'Allowances + चाडपर्व' : 'Allowances (भत्ता)',
+                  value: 'रु. ${_formatAmount(allowances + bonus)}',
+                ),
               ),
-              _SalaryDetailMini(
-                label: 'Total Deductions (कट्टी)',
-                value: '- रु. ${_formatAmount(totalDeductions)}',
-                isNegative: true,
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SalaryDetailMini(
+                  label: 'Total Deductions (कट्टी)',
+                  value: '- रु. ${_formatAmount(totalDeductions)}',
+                  isNegative: true,
+                ),
               ),
             ],
           ),
@@ -643,30 +650,36 @@ class _PayslipScreenState extends State<PayslipScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.analytics_rounded,
+                          color: AppTheme.primary, size: 16),
                     ),
-                    child: const Icon(Icons.analytics_rounded,
-                        color: AppTheme.primary, size: 16),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'चालु आर्थिक वर्ष संक्षिप्त (FY $_academicYear)',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppTheme.dark,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'चालु आर्थिक वर्ष संक्षिप्त (FY $_academicYear)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : AppTheme.dark,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
@@ -756,6 +769,8 @@ class _PayslipScreenState extends State<PayslipScreen> {
       children: [
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
@@ -765,6 +780,8 @@ class _PayslipScreenState extends State<PayslipScreen> {
         const SizedBox(height: 3),
         Text(
           value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w900,
@@ -1081,14 +1098,9 @@ class _PayslipScreenState extends State<PayslipScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const SectionHeader(
-              title: 'Past Payslips (विगतका तलब भौचर)',
-              subtitle: 'Tap to view or download full official slip',
-            ),
-          ],
+        const SectionHeader(
+          title: 'Past Payslips (विगतका तलब भौचर)',
+          subtitle: 'Tap to view or download full official slip',
         ),
         const SizedBox(height: 10),
 
@@ -1608,14 +1620,19 @@ class _PayslipScreenState extends State<PayslipScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  'खुद भुक्तानी पाउने रकम (NET PAYABLE):',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF065F46),
+                                const Expanded(
+                                  child: Text(
+                                    'खुद भुक्तानी (NET PAYABLE):',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF065F46),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Text(
                                   'रु. ${_formatAmount(net)}',
                                   style: const TextStyle(
@@ -1887,25 +1904,31 @@ class _PayslipScreenState extends State<PayslipScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'तलब पेश्की अनुरोध (Advance Request)',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'तलब पेश्की अनुरोध (Advance Request)',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            Text(
-                              'विद्यालय प्रशासन तथा लेखा शाखा समक्ष अनुरोध',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.darkSubtext,
-                                fontWeight: FontWeight.w600,
+                              Text(
+                                'विद्यालय प्रशासन तथा लेखा शाखा समक्ष अनुरोध',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.darkSubtext,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close_rounded),
@@ -2201,25 +2224,31 @@ class _PayslipScreenState extends State<PayslipScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'वार्षिक आयकर विवरण (Annual Tax TDS)',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'वार्षिक आयकर विवरण (Annual Tax TDS)',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        'Nepal IRD Conforming • Fiscal Year: $fiscalYear',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.darkSubtext,
-                          fontWeight: FontWeight.w600,
+                        Text(
+                          'Nepal IRD Conforming • Fiscal Year: $fiscalYear',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.darkSubtext,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
@@ -2453,6 +2482,8 @@ class _SalaryDetailMini extends StatelessWidget {
       children: [
         Text(
           value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: isNegative ? const Color(0xFFFCA5A5) : Colors.white,
             fontWeight: FontWeight.w900,
@@ -2462,6 +2493,8 @@ class _SalaryDetailMini extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white.withOpacity(0.75),
             fontSize: 10,

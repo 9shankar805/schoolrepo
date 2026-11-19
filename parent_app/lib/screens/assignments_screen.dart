@@ -35,7 +35,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> with SingleTicker
     final completed = api.assignments.where((a) => a.isCompleted).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Homework & Assignments'),
         leading: CircleIconButton(
@@ -71,13 +71,13 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> with SingleTicker
     if (list.isEmpty) {
       return EmptyStateWidget(
         icon: isPending ? Icons.check_circle_outline : Icons.assignment_outlined,
-        title: isPending ? 'All caught up! 🎉' : 'No completed homework yet',
+        title: isPending ? 'All caught up' : 'No completed homework yet',
         subtitle: isPending ? 'No pending assignments for this term.' : 'Completed assignments will appear here.',
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       itemCount: list.length,
       itemBuilder: (context, idx) {
         final a = list[idx];
@@ -85,7 +85,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> with SingleTicker
           assignment: a,
           onToggleStatus: () => _toggleAssignment(a),
           onTapDetail: () => _showDetailSheet(context, a),
-        ).animate().fadeIn(delay: (idx * 50).ms).slideY(begin: 0.05);
+        );
       },
     );
   }
@@ -106,6 +106,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> with SingleTicker
   }
 
   void _showDetailSheet(BuildContext context, Assignment a) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -146,13 +147,13 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> with SingleTicker
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Text(
                 a.description,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), height: 1.35),
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : const Color(0xFF0F172A), height: 1.35),
               ),
             ),
             const SizedBox(height: 14),
@@ -171,7 +172,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> with SingleTicker
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),

@@ -29,7 +29,7 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
         leadingWidth: 60,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -70,7 +70,7 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
             ),
             const SizedBox(height: 20),
 
-            const SectionHeader(title: '📋 Leave Application History'),
+            const SectionHeader(title: 'Leave Application History', icon: Icons.history_rounded),
             const SizedBox(height: 12),
             if (leaves.isEmpty)
               const EmptyStateWidget(
@@ -215,10 +215,10 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
               TextField(
                 controller: reasonCtrl,
                 maxLines: 3,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Reason for absence & Doctor remarks',
                   filled: true,
-                  fillColor: AppTheme.lightBg,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : AppTheme.lightBg,
                 ),
               ),
               const SizedBox(height: 20),

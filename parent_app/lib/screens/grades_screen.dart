@@ -27,7 +27,7 @@ class _GradesScreenState extends State<GradesScreen> {
         : 88.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Academic Grades & GPA'),
         leading: CircleIconButton(
@@ -53,7 +53,7 @@ class _GradesScreenState extends State<GradesScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -144,7 +144,7 @@ class _GradesScreenState extends State<GradesScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn().slideY(begin: 0.05),
+            ),
             const SizedBox(height: 18),
 
             // Term GPA Progression Bar Chart
@@ -157,7 +157,7 @@ class _GradesScreenState extends State<GradesScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '📈 Academic Growth Trend',
+                        'Academic Growth Trend',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                       ),
                       Text(
@@ -205,7 +205,7 @@ class _GradesScreenState extends State<GradesScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SectionHeader(title: '📊 Subject Breakdown'),
+                const SectionHeader(title: 'Subject Breakdown', icon: Icons.bar_chart_outlined),
                 Text(
                   'Tap subject for test details',
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
@@ -283,6 +283,7 @@ class _GradesScreenState extends State<GradesScreen> {
   }
 
   void _showSubjectDetailSheet(BuildContext context, SubjectGrade sub) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasPr = sub.hasPractical;
     final thScore = hasPr ? (sub.thMarks?.toInt() ?? (sub.score * 0.75).round()) : sub.score.toInt();
     final prScore = hasPr ? (sub.prMarks?.toInt() ?? (sub.score * 0.25).round()) : 0;
@@ -332,7 +333,7 @@ class _GradesScreenState extends State<GradesScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),

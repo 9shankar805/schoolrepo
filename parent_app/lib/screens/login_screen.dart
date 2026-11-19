@@ -194,11 +194,11 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: resetCtrl,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Registered Parent Email',
-                  prefixIcon: Icon(Icons.email_outlined, color: AppTheme.grey),
+                  prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.grey),
                   filled: true,
-                  fillColor: AppTheme.lightBg,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : AppTheme.lightBg,
                 ),
               ),
               const SizedBox(height: 20),
@@ -262,11 +262,11 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: ctrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Base API URL',
-                prefixIcon: Icon(Icons.link, size: 20),
+                prefixIcon: const Icon(Icons.link, size: 20),
                 filled: true,
-                fillColor: AppTheme.lightBg,
+                fillColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : AppTheme.lightBg,
               ),
             ),
             const SizedBox(height: 12),
@@ -342,7 +342,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('🇳🇵 ', style: TextStyle(fontSize: 11)),
                         Text(
                           'Session 2081-82 (२०८१)',
                           style: TextStyle(
@@ -367,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Parent Helpdesk Hotline: 📞 01-5970000 • support@nepalschoolhub.com'),
+                              content: Text('Parent Helpdesk Hotline: 01-5970000 • support@nepalschoolhub.com'),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -404,7 +403,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'Welcome to ParentLink 👋',
+                      'Welcome to ParentLink',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
@@ -704,7 +703,7 @@ class _LoginScreenState extends State<LoginScreen> {
             prefixIcon: Icon(icon, color: AppTheme.grey, size: 20),
             suffixIcon: suffix,
             filled: true,
-            fillColor: AppTheme.lightBg,
+            fillColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : AppTheme.lightBg,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,

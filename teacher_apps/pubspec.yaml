@@ -25,7 +25,8 @@ dependencies:
   # Networking & Storage
   http: ^1.2.0
   shared_preferences: ^2.2.2
-  url_launcher: ^6.3.3
+  url_launcher: ^6.3.0
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:
