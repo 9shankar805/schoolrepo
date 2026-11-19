@@ -724,27 +724,22 @@ class _ParentCommunicationScreenState extends State<ParentCommunicationScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SectionHeader(
-                title: 'Upcoming Parent Conferences (भेटघाट)',
-                subtitle: 'Scheduled one-on-one student discussions',
-              ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('तय गर्नुहोस्', style: TextStyle(fontSize: 11.5)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.purple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+          SectionHeader(
+            title: 'Upcoming Parent Conferences (भेटघाट)',
+            subtitle: 'Scheduled one-on-one student discussions',
+            trailing: ElevatedButton.icon(
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('तय गर्नुहोस्', style: TextStyle(fontSize: 11.5)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.purple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                onPressed: () => _showScheduleMeetingModal(isDark),
               ),
-            ],
+              onPressed: () => _showScheduleMeetingModal(isDark),
+            ),
           ),
           const SizedBox(height: 12),
           ..._meetings.map((m) {

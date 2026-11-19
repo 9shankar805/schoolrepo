@@ -492,18 +492,23 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Class In-Charge Seating (कक्षा बसाइ)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+              'Class Seating (कक्षा बसाइ)',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             Text(
-              '${cls.section} • $occupiedSeats / $totalSeats Benches Seated',
+              '${cls.section} • $occupiedSeats / $totalSeats Seated',
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.darkSubtext,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -514,7 +519,7 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
                 size: 38,
               )
             : null,
-        leadingWidth: Navigator.canPop(context) ? 60 : null,
+        leadingWidth: Navigator.canPop(context) ? 52 : null,
         automaticallyImplyLeading: false,
         actions: [
           // Bench Layout Config
@@ -531,25 +536,27 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
           ),
           // Save Seating Plan
           Container(
-            margin: const EdgeInsets.only(right: 14),
+            margin: const EdgeInsets.only(right: 12),
             child: ElevatedButton.icon(
               onPressed: _isSaving ? null : () => _saveClassroomSeating('${cls.classId ?? cls.id ?? 1}'),
               icon: _isSaving
                   ? const SizedBox(
-                      width: 14,
-                      height: 14,
+                      width: 12,
+                      height: 12,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Icon(Icons.cloud_upload_rounded, size: 16),
+                  : const Icon(Icons.cloud_upload_rounded, size: 14),
               label: Text(
                 _isSaving ? 'Saving' : 'Save',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
           ),
@@ -783,7 +790,7 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
           // Classroom Blackboard / Whiteboard with Wooden Frame
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
@@ -799,22 +806,23 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
               ],
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.door_front_door_rounded, size: 16, color: Color(0xFFFBBF24)),
-                    SizedBox(width: 6),
+                    Icon(Icons.door_front_door_rounded, size: 14, color: Color(0xFFFBBF24)),
+                    SizedBox(width: 4),
                     Text(
-                      'प्रवेशद्वार • FRONT DOOR',
+                      'DOOR',
                       style: TextStyle(
                         color: Color(0xFFFBBF24),
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     children: [
@@ -822,29 +830,38 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
                         'कालोपाटी • BLACKBOARD • $classSection',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
+                          letterSpacing: 0.6,
                         ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2),
                       const Text(
                         'सुविचार: "अनुशासित विद्यार्थी, सभ्य समाज र उज्ज्वल भविष्य"',
                         style: TextStyle(
                           color: Color(0xFFBAE6FD),
-                          fontSize: 9.5,
+                          fontSize: 9,
                           fontStyle: FontStyle.italic,
                           fontWeight: FontWeight.w600,
                         ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.cleaning_services_rounded, size: 12, color: Colors.white70),
                     SizedBox(width: 4),
                     Text(
-                      'DUSTER & CHALK',
+                      'CHALK',
                       style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700),
                     ),
                   ],
@@ -856,7 +873,8 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
 
           // Class In-Charge Master Desk (कक्षा शिक्षकको मुख्य सिट र टेबल)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF78350F), Color(0xFF92400E)], // Polished Teak Wood
@@ -871,7 +889,6 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
               ],
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.all(5),
@@ -882,40 +899,47 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
                   child: const Icon(Icons.co_present_rounded, size: 18, color: Colors.white),
                 ),
                 const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'कक्षा शिक्षक मञ्च • CLASS IN-CHARGE MASTER DESK',
-                          style: TextStyle(
-                            color: Color(0xFFFEF3C7),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        runSpacing: 2,
+                        children: [
+                          const Text(
+                            'कक्षा शिक्षक मञ्च • CLASS IN-CHARGE DESK',
+                            style: TextStyle(
+                              color: Color(0xFFFEF3C7),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.4,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B),
-                            borderRadius: BorderRadius.circular(4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text('CLASS IN-CHARGE', style: TextStyle(color: Colors.black87, fontSize: 7.5, fontWeight: FontWeight.w900)),
                           ),
-                          child: const Text('CLASS IN-CHARGE', style: TextStyle(color: Colors.black87, fontSize: 8, fontWeight: FontWeight.w900)),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      '$teacherName • Teacher Register & Attendance Desk',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        '$teacherName • Teacher Register & Attendance Desk',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1078,20 +1102,27 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.table_restaurant_rounded, size: 12, color: Colors.white),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Bench $benchNo ${benchNo == 1 ? '(Front / अगाडि)' : (benchNo == _benchesPerColumn ? '(Back / पछाडि)' : '')}',
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.table_restaurant_rounded, size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Bench $benchNo ${benchNo == 1 ? '(Front)' : (benchNo == _benchesPerColumn ? '(Back)' : '')}',
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 4),
                 Text(
                   'Col $columnNo',
                   style: const TextStyle(
@@ -1290,6 +1321,8 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
                       ),
                       child: Text(
                         seat.specialRole!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 7.5,
                           fontWeight: FontWeight.w900,
@@ -1314,32 +1347,47 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
   Widget _buildBackClassroomWall(bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.cardBorder),
       ),
       child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(Icons.dashboard_customize_outlined, size: 15, color: AppTheme.darkSubtext),
-              SizedBox(width: 6),
-              Text(
-                'पछाडिको भित्ता • CLASSROOM NOTICE BOARD (सूचना पाटी)',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppTheme.darkSubtext),
-              ),
-            ],
+          Expanded(
+            child: Row(
+              children: [
+                Icon(Icons.dashboard_customize_outlined, size: 15, color: AppTheme.darkSubtext),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'NOTICE BOARD (सूचना पाटी)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.darkSubtext,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
+          SizedBox(width: 10),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.meeting_room_rounded, size: 15, color: AppTheme.orange),
               SizedBox(width: 4),
               Text(
-                'पछाडिको ढोका • BACK EXIT',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: AppTheme.orange),
+                'BACK EXIT',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.orange,
+                ),
               ),
             ],
           ),
@@ -1363,21 +1411,25 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.person_pin_rounded, color: AppTheme.orange, size: 18),
                   const SizedBox(width: 6),
                   Text(
-                    'Unseated Students (बाँकी विद्यार्थी): ${_unassignedStudents.length}',
+                    'Unseated Students (${_unassignedStudents.length})',
                     style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: AppTheme.orange),
                   ),
                 ],
               ),
               const Text(
-                'Tap student, then tap any empty seat to assign',
+                'Tap student, then tap any empty seat',
                 style: TextStyle(fontSize: 10, color: AppTheme.darkSubtext, fontWeight: FontWeight.w600),
               ),
             ],
@@ -1501,42 +1553,49 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
 
               // Role Tag Selection (CR, Vision, Buddy Pair)
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Classroom Role:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text('Classroom Role:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  ),
                   const SizedBox(width: 8),
-                  Wrap(
-                    spacing: 6,
-                    children: [
-                      'CR (क्याप्टेन)',
-                      'Vision (चस्मा)',
-                      'Buddy Pair',
-                    ].map((role) {
-                      final isSel = seat.specialRole == role;
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            seat.specialRole = isSel ? null : role;
-                          });
-                          setDossierState(() {});
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: isSel ? AppTheme.primary : (isDark ? AppTheme.darkBg : Colors.grey.shade100),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: isSel ? AppTheme.primary : AppTheme.cardBorder),
-                          ),
-                          child: Text(
-                            role,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: isSel ? Colors.white : (isDark ? Colors.white70 : AppTheme.dark),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        'CR (क्याप्टेन)',
+                        'Vision (चस्मा)',
+                        'Buddy Pair',
+                      ].map((role) {
+                        final isSel = seat.specialRole == role;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              seat.specialRole = isSel ? null : role;
+                            });
+                            setDossierState(() {});
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isSel ? AppTheme.primary : (isDark ? AppTheme.darkBg : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: isSel ? AppTheme.primary : AppTheme.cardBorder),
+                            ),
+                            child: Text(
+                              role,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: isSel ? Colors.white : (isDark ? Colors.white70 : AppTheme.dark),
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ],
               ),
@@ -1691,8 +1750,8 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  {'val': 2, 'lbl': '2 Seats (Dual Desk - Standard)'},
-                  {'val': 3, 'lbl': '3 Seats (3-Seater Bench)'},
+                  {'val': 2, 'lbl': '2 Seats (Dual)'},
+                  {'val': 3, 'lbl': '3 Seats (Triple)'},
                 ].map((item) {
                   final val = item['val'] as int;
                   final lbl = item['lbl'] as String;
@@ -1701,7 +1760,14 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: ChoiceChip(
-                        label: Center(child: Text(lbl, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11))),
+                        label: Center(
+                          child: Text(
+                            lbl,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         selected: sel,
                         onSelected: (_) => setModalState(() => tempPerBench = val),
                       ),
@@ -1774,17 +1840,16 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
         child: Column(
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.dashboard_customize_rounded, color: AppTheme.primary, size: 24),
-                    SizedBox(width: 8),
-                    Text(
-                      'Classroom Notice Seating Chart (सिट तालिका)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                    ),
-                  ],
+                const Icon(Icons.dashboard_customize_rounded, color: AppTheme.primary, size: 22),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Class Seating Chart (सिट तालिका)',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
               ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/teacher_provider.dart';
@@ -29,6 +30,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String? _lastLoadedClassKey;
   bool _loadingServerData = false;
   bool _speedCallAutoTriggered = false;
+  FlutterTts? _flutterTts;
+
+  @override
+  void initState() {
+    super.initState();
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    try {
+      _flutterTts = FlutterTts();
+      await _flutterTts?.setLanguage("en-US");
+      await _flutterTts?.setSpeechRate(0.48);
+      await _flutterTts?.setVolume(1.0);
+      await _flutterTts?.setPitch(1.0);
+    } catch (_) {}
+  }
+
+  Future<void> _speak(String text) async {
+    try {
+      await _flutterTts?.stop();
+      await _flutterTts?.speak(text);
+    } catch (_) {}
+  }
 
   String _toNepaliNumber(String input) {
     const nepaliDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
@@ -37,6 +62,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   void dispose() {
+    _flutterTts?.stop();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -172,6 +198,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     bool autoAdvance = true;
     bool soundEnabled = true;
     bool isCompleted = false;
+    int lastSpokenIndex = -1;
+
+    void speakCurrentStudent(int index) {
+      if (soundEnabled && index >= 0 && index < activeStudents.length && lastSpokenIndex != index) {
+        lastSpokenIndex = index;
+        final student = activeStudents[index];
+        _speak('Roll ${student.rollNo}, ${student.name}');
+      }
+    }
+
+    // Speak initial student on opening
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      speakCurrentStudent(currentIndex);
+    });
 
     showModalBottomSheet(
       context: context,
@@ -189,21 +229,27 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             if (soundEnabled) {
               HapticFeedback.mediumImpact();
               SystemSound.play(SystemSoundType.click);
+              final statusName = newStatus == 0 ? 'Present' : (newStatus == 1 ? 'Absent' : (newStatus == 2 ? 'Late' : 'Leave'));
+              _speak(statusName);
             }
             _setStatus(currentIndex, newStatus);
             setModalState(() {});
 
             if (autoAdvance) {
-              Future.delayed(const Duration(milliseconds: 220), () {
+              Future.delayed(const Duration(milliseconds: 320), () {
                 if (!mounted) return;
                 if (currentIndex < total - 1) {
                   setModalState(() {
                     currentIndex++;
+                    speakCurrentStudent(currentIndex);
                   });
                 } else {
                   setModalState(() {
                     isCompleted = true;
                   });
+                  if (soundEnabled) {
+                    _speak('Roll call complete');
+                  }
                 }
               });
             } else {
@@ -263,6 +309,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             setModalState(() {
                               currentIndex = i;
                               isCompleted = false;
+                              speakCurrentStudent(currentIndex);
                             });
                           },
                           borderRadius: BorderRadius.circular(10),
@@ -484,11 +531,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           children: [
                             Row(
                               children: [
-                                const Text(
-                                  'Speed Call (द्रुत हाजिरी)',
-                                  style: TextStyle(
-                                    fontSize: 15.5,
-                                    fontWeight: FontWeight.w900,
+                                const Flexible(
+                                  child: Text(
+                                    'Speed Call (द्रुत हाजिरी)',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
@@ -563,8 +614,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           size: 20,
                           color: soundEnabled ? AppTheme.primary : AppTheme.darkSubtext,
                         ),
-                        onPressed: () => setModalState(() => soundEnabled = !soundEnabled),
-                        tooltip: soundEnabled ? 'Sound ON' : 'Sound OFF',
+                        onPressed: () {
+                          setModalState(() {
+                            soundEnabled = !soundEnabled;
+                            if (soundEnabled) {
+                              lastSpokenIndex = -1;
+                              speakCurrentStudent(currentIndex);
+                            } else {
+                              _flutterTts?.stop();
+                            }
+                          });
+                        },
+                        tooltip: soundEnabled ? 'Voice ON' : 'Voice OFF',
                       ),
 
                       IconButton(
@@ -941,7 +1002,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: currentIndex > 0
-                              ? () => setModalState(() => currentIndex--)
+                              ? () => setModalState(() {
+                                    currentIndex--;
+                                    speakCurrentStudent(currentIndex);
+                                  })
                               : null,
                           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 14),
                           label: const Text('Prev', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
@@ -964,9 +1028,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: ElevatedButton.icon(
                           onPressed: () {
                             if (currentIndex < total - 1) {
-                              setModalState(() => currentIndex++);
+                              setModalState(() {
+                                currentIndex++;
+                                speakCurrentStudent(currentIndex);
+                              });
                             } else {
                               setModalState(() => isCompleted = true);
+                              if (soundEnabled) {
+                                _speak('Roll call complete');
+                              }
                             }
                           },
                           icon: Icon(currentIndex < total - 1 ? Icons.arrow_forward_ios_rounded : Icons.done_all_rounded, size: 14),
@@ -990,7 +1060,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           );
         },
       ),
-    );
+    ).then((_) {
+      _flutterTts?.stop();
+    });
   }
 
   Widget _buildSpecCard(String title, String value, Color color, bool isDark) {
@@ -1344,13 +1416,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       Expanded(
                                         child: ElevatedButton.icon(
                                           onPressed: () => _makePhoneCall(s.parentPhone),
-                                          icon: const Icon(Icons.call_rounded, size: 16),
-                                          label: const Text('Call Parent', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                                          icon: const Icon(Icons.call_rounded, size: 15),
+                                          label: const Text(
+                                            'Call Parent',
+                                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: AppTheme.green,
                                             foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(vertical: 10),
+                                            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                           ),
                                         ),
                                       ),
@@ -1358,13 +1437,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       Expanded(
                                         child: OutlinedButton.icon(
                                           onPressed: () => _openWhatsApp(s.parentPhone, s.name),
-                                          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF25D366)),
-                                          label: const Text('WhatsApp / SMS', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                                          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 15, color: Color(0xFF25D366)),
+                                          label: const Text(
+                                            'WhatsApp / SMS',
+                                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                           style: OutlinedButton.styleFrom(
                                             foregroundColor: isDark ? Colors.white : AppTheme.dark,
                                             side: const BorderSide(color: Color(0xFF25D366), width: 1.2),
-                                            padding: const EdgeInsets.symmetric(vertical: 10),
+                                            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                           ),
                                         ),
                                       ),
@@ -1411,7 +1497,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   ),
                                   const SizedBox(height: 10),
                                   // Quick Reclassify status options
-                                  Row(
+                                  Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 6,
+                                    runSpacing: 6,
                                     children: [
                                       const Text(
                                         'Reclassify:',
@@ -1421,7 +1510,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                           color: AppTheme.darkSubtext,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
                                       InkWell(
                                         onTap: () {
                                           _setStatus(origIndex, 3); // Leave
@@ -1437,7 +1525,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                           child: const Text('Mark Leave', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.purple)),
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
                                       InkWell(
                                         onTap: () {
                                           _setStatus(origIndex, 2); // Late
@@ -1453,7 +1540,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                           child: const Text('Mark Late', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.orange)),
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
                                       InkWell(
                                         onTap: () {
                                           _setStatus(origIndex, 0); // Present
@@ -1482,7 +1568,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           );
         },
       ),
-    );
+    ).then((_) {
+      _flutterTts?.stop();
+    });
   }
 
   @override
@@ -1546,18 +1634,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       appBar: AppBar(
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Haziri Portal (हाजिरी)',
-              style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             Text(
-              'Real-Time Student Attendance',
+              'Student Attendance',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.darkSubtext,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1568,60 +1661,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 size: 38,
               )
             : null,
-        leadingWidth: Navigator.canPop(context) ? 60 : null,
+        leadingWidth: Navigator.canPop(context) ? 52 : null,
         automaticallyImplyLeading: false,
         actions: [
-          // Speed Roll Call Interactive Mode Button
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-            child: InkWell(
-              onTap: () => _openSpeedRollCall(activeStudents),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2563EB).withOpacity(0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bolt_rounded, size: 16, color: Colors.amber),
-                    SizedBox(width: 4),
-                    Text(
-                      'Speed Call',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Speed Call Absentees Quick Launcher (if absentees > 0)
-          if (_absentCount > 0)
-            IconButton(
-              icon: Badge(
-                label: Text('$_absentCount',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                backgroundColor: Colors.red,
-                child: const Icon(Icons.phone_in_talk_rounded, size: 20, color: Colors.red),
-              ),
-              tooltip: 'Speed Call Absentees ($_absentCount)',
-              onPressed: () => _openSpeedCallSheet(activeStudents),
-            ),
           // Grid / List View Toggle
           IconButton(
             icon: Icon(
@@ -1636,19 +1678,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             margin: const EdgeInsets.only(right: 14),
             child: ElevatedButton.icon(
               onPressed: () => _showSaveDialog(),
-              icon: const Icon(Icons.cloud_upload_outlined, size: 16),
+              icon: const Icon(Icons.cloud_upload_outlined, size: 15),
               label: const Text(
                 'Submit',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
           ),
@@ -1843,20 +1887,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         flex: 6,
                         child: ElevatedButton.icon(
                           onPressed: () => _openSpeedRollCall(activeStudents),
-                          icon: const Icon(Icons.bolt_rounded, size: 17, color: Colors.amber),
+                          icon: const Icon(Icons.bolt_rounded, size: 16, color: Colors.amber),
                           label: const Text(
-                            '⚡ Speed Call (द्रुत हाजिरी)',
+                            '⚡ Speed Call',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w900,
                               color: Colors.white,
                               letterSpacing: 0.2,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 9.5),
+                            padding: const EdgeInsets.symmetric(vertical: 9.5, horizontal: 4),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -1879,11 +1925,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               fontWeight: FontWeight.w800,
                               color: AppTheme.green,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
                                 color: AppTheme.green.withOpacity(0.4)),
-                            padding: const EdgeInsets.symmetric(vertical: 9.5),
+                            padding: const EdgeInsets.symmetric(vertical: 9.5, horizontal: 4),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -1896,6 +1944,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         icon: const Icon(Icons.refresh_rounded,
                             size: 18, color: AppTheme.darkSubtext),
                         tooltip: 'Reset to Absent',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       ),
                     ],
                   ),
