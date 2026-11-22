@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
@@ -23,41 +21,16 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _biometricEnabled = false;
   String? _error;
 
-  late final PageController _slideController;
-  Timer? _slideTimer;
-  int _currentSlide = 0;
-  final List<String> _slideImages = [
-    'assets/images/slide1.webp',
-    'assets/images/slide2.webp',
-    'assets/images/slide3.webp',
-    'assets/images/slide4.webp',
-  ];
+  static const String _bannerImage = 'assets/images/NSHLMS Smart School Management Banner.png';
 
   @override
   void initState() {
     super.initState();
-    _slideController = PageController();
-    _startSlideTimer();
     _loadBiometricSetting();
-  }
-
-  void _startSlideTimer() {
-    _slideTimer?.cancel();
-    _slideTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (!mounted || !_slideController.hasClients) return;
-      final nextPage = (_currentSlide + 1) % _slideImages.length;
-      _slideController.animateToPage(
-        nextPage,
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.easeInOutCubic,
-      );
-    });
   }
 
   @override
   void dispose() {
-    _slideTimer?.cancel();
-    _slideController.dispose();
     _idCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
@@ -224,9 +197,9 @@ class _LoginScreenState extends State<LoginScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Sleek Header Sliver with Dynamic Background Image Carousel
+          // Sleek Header Sliver with NSHLMS Smart School Management Banner
           SliverAppBar(
-            expandedHeight: 260,
+            expandedHeight: (MediaQuery.of(context).size.width * (941.0 / 1672.0)).clamp(200.0, 260.0),
             pinned: false,
             automaticallyImplyLeading: false,
             elevation: 0,
@@ -235,153 +208,35 @@ class _LoginScreenState extends State<LoginScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 1. Sliding Image Carousel (slide1.webp, slide2.webp, etc.)
-                  PageView.builder(
-                    controller: _slideController,
-                    onPageChanged: (idx) {
-                      setState(() => _currentSlide = idx);
-                    },
-                    itemCount: _slideImages.length,
-                    itemBuilder: (ctx, index) {
-                      return Image.asset(
-                        _slideImages[index],
-                        fit: BoxFit.cover,
-                        alignment: Alignment.center,
-                        errorBuilder: (_, __, ___) => Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF0A2540), Color(0xFF0F4C81)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
+                  Image.asset(
+                    _bannerImage,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    errorBuilder: (_, __, ___) => Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF0A2540), Color(0xFF0F4C81)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      );
-                    },
-                  ),
-
-                  // 2. Cinematic Gradient Overlay (Top is 100% clear so photo/people are fully visible)
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.transparent,
-                          const Color(0xFF0A2540).withOpacity(0.75),
-                          const Color(0xFF0F172A),
-                        ],
-                        stops: const [0.0, 0.50, 0.88, 1.0],
                       ),
                     ),
                   ),
-
-                  // 3. Foreground Header Content & Slide Indicators (No top icons covering faces)
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const Spacer(),
-
-                          // Frosted Glassmorphism App Logo & Brand Capsule
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.40),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.25),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Image.asset(
-                                    'assets/icons/app_icon.png',
-                                    fit: BoxFit.cover,
-                                  ),
-                                ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Row(
-                                      children: [
-                                        Text(
-                                          'Guru',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -0.5,
-                                          ),
-                                        ),
-                                        SizedBox(width: 6),
-                                        Icon(Icons.verified_rounded, color: AppTheme.gold, size: 17),
-                                      ],
-                                    ),
-                                    Text(
-                                      'NEPAL SCHOOL HUB (NSHLMS)',
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.9),
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 1.1,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Slide Indicator Dots
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(_slideImages.length, (idx) {
-                              final bool isActive = _currentSlide == idx;
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                margin: const EdgeInsets.symmetric(horizontal: 3),
-                                width: isActive ? 20 : 6,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  color: isActive ? AppTheme.gold : Colors.white.withOpacity(0.4),
-                                  borderRadius: BorderRadius.circular(4),
-                                  boxShadow: isActive
-                                      ? [BoxShadow(color: AppTheme.gold.withOpacity(0.7), blurRadius: 4)]
-                                      : null,
-                                ),
-                              );
-                            }),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 56,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          ],
+                        ),
                       ),
                     ),
                   ),

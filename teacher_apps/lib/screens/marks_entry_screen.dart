@@ -332,6 +332,33 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
         }
       } catch (_) {}
 
+      // Refine practical flags: properly separate standalone practical courses vs composite subjects
+      final prCourseNames = fetchedSubjects
+          .where((s) => RegExp(r'(pr\.|practical|oral)', caseSensitive: false).hasMatch(s['name'] as String))
+          .map((s) => (s['name'] as String).toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), ''))
+          .toSet();
+
+      for (var sub in fetchedSubjects) {
+        final sName = sub['name'] as String;
+        final isPr = RegExp(r'(pr\.|practical|oral)', caseSensitive: false).hasMatch(sName);
+        if (isPr) {
+          sub['has_practical'] = false;
+          sub['is_pr_course'] = true;
+          sub['th_fm'] = 0.0;
+          sub['pr_fm'] = sub['fm'];
+        } else {
+          final clean = sName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+          final hasCompanion = prCourseNames.any((pn) =>
+              pn.contains(clean) || clean.contains(pn.replaceAll('pr', '').replaceAll('practical', '').replaceAll('oral', '')));
+          if (hasCompanion) {
+            sub['has_practical'] = false;
+            sub['is_pr_course'] = false;
+            sub['th_fm'] = sub['fm'];
+            sub['pr_fm'] = 0.0;
+          }
+        }
+      }
+
       // 2. Secondary: fetch class details
       if (fetchedSubjects.length <= 1) {
         try {
@@ -773,13 +800,34 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
               final scTh = (sc['th_fm'] as num?)?.toDouble();
               final scPr = (sc['pr_fm'] as num?)?.toDouble();
               final scHasPr = sc['has_practical'] == true;
+              final isPrCourse = RegExp(r'(pr\.|practical|oral)', caseSensitive: false).hasMatch(scName);
+
               for (var sub in _masterSubjects) {
                 if (sub['name'].toString().toLowerCase() == scName.toLowerCase()) {
                   if (scFm != null) sub['fm'] = scFm;
                   if (scPm != null) sub['pm'] = scPm;
-                  if (scTh != null) sub['th_fm'] = scTh;
-                  if (scPr != null) sub['pr_fm'] = scPr;
-                  sub['has_practical'] = scHasPr;
+                  if (isPrCourse) {
+                    sub['has_practical'] = false;
+                    sub['is_pr_course'] = true;
+                    sub['th_fm'] = 0.0;
+                    sub['pr_fm'] = scFm ?? sub['fm'];
+                  } else {
+                    final clean = scName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+                    final hasCompanion = serverCourses.any((c) =>
+                        c is Map &&
+                        RegExp(r'(pr\.|practical|oral)', caseSensitive: false).hasMatch(c['name']?.toString() ?? c['course_name']?.toString() ?? '') &&
+                        (c['name']?.toString() ?? c['course_name']?.toString() ?? '').toLowerCase().contains(clean));
+                    if (hasCompanion) {
+                      sub['has_practical'] = false;
+                      sub['is_pr_course'] = false;
+                      sub['th_fm'] = scFm ?? sub['fm'];
+                      sub['pr_fm'] = 0.0;
+                    } else {
+                      if (scTh != null) sub['th_fm'] = scTh;
+                      if (scPr != null) sub['pr_fm'] = scPr;
+                      sub['has_practical'] = scHasPr;
+                    }
+                  }
                   if (sc['exam_id'] != null) sub['exam_id'] = sc['exam_id'];
                   if (sc['rule_id'] != null) sub['rule_id'] = sc['rule_id'];
                 }
@@ -3207,13 +3255,15 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
       appBar: AppBar(
+        titleSpacing: 0,
         title: InkWell(
           onTap: () => setState(() => _currentStep = 0),
           borderRadius: BorderRadius.circular(8),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -3221,13 +3271,11 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                     Flexible(
                       child: Text(
                         '${_selectedClass?.split('—').first.trim() ?? _selectedClass} • ${_isAllSubjectsMode ? "Ledger" : _selectedSubject}',
-                        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.tune_rounded, size: 13, color: AppTheme.primary),
                   ],
                 ),
                 Text(
@@ -3243,19 +3291,15 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
         leading: CircleIconButton(
           icon: Icons.arrow_back_ios_new_rounded,
           onTap: () => setState(() => _currentStep = 0),
-          size: 38,
+          size: 36,
         ),
-        leadingWidth: 60,
+        leadingWidth: 48,
         automaticallyImplyLeading: false,
         actions: [
-          // Change Setup / Filter Button
-          IconButton(
-            icon: const Icon(Icons.tune_rounded, size: 20, color: AppTheme.primary),
-            tooltip: 'Change Setup & Filters',
-            onPressed: () => setState(() => _currentStep = 0),
-          ),
           // Table vs Cards Toggle
           IconButton(
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
             icon: Icon(
               showSpreadsheet ? Icons.view_agenda_rounded : Icons.table_chart_rounded,
               color: AppTheme.primary,
@@ -3264,27 +3308,30 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
             tooltip: showSpreadsheet ? 'Switch to Card List' : 'Switch to Master Table',
             onPressed: () => setState(() => _isSpreadsheetView = !showSpreadsheet),
           ),
+          const SizedBox(width: 4),
           // Save All Button
           Container(
-            margin: const EdgeInsets.only(right: 14),
+            margin: const EdgeInsets.only(right: 12),
             child: ElevatedButton.icon(
               onPressed: _saving ? null : _saveMarks,
               icon: _saving
                   ? const SizedBox(
-                      width: 14,
-                      height: 14,
+                      width: 12,
+                      height: 12,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Icon(Icons.cloud_upload_rounded, size: 16),
+                  : const Icon(Icons.cloud_upload_rounded, size: 14),
               label: Text(
-                _saving ? 'Saving...' : 'Save All',
+                _saving ? 'Saving...' : 'Save',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
@@ -4502,6 +4549,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                         final controllers = item['subjectControllers'] as Map<String, TextEditingController>?;
                         final ctrl = controllers?[sName];
                         final bool hasPr = (sub['has_practical'] as bool?) ?? false;
+                        final bool isPrCourse = RegExp(r'(pr\.|practical|oral)', caseSensitive: false).hasMatch(sName) || sub['is_pr_course'] == true;
                         final fm = (sub['fm'] as num?)?.toInt() ?? 100;
 
                         return SizedBox(
@@ -4535,11 +4583,11 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                                           Text(
                                             hasPr
                                                 ? 'TH:${(sub['th_fm'] ?? 75).toInt()}+PR:${(sub['pr_fm'] ?? 25).toInt()}'
-                                                : 'FM:$fm',
+                                                : (isPrCourse ? 'PR:$fm' : 'FM:$fm'),
                                             style: TextStyle(
                                               fontSize: 9,
                                               fontWeight: FontWeight.w700,
-                                              color: hasPr ? AppTheme.primary : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                              color: (hasPr || isPrCourse) ? AppTheme.primary : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                                             ),
                                           ),
                                           const SizedBox(width: 2),
