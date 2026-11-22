@@ -2671,6 +2671,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
           : _buildMarksScreen(
               context: context,
               isDark: isDark,
+              classesList: classesList,
               filteredMarks: filteredMarks,
               activeStudents: activeStudents,
               avgScore: avgScore,
@@ -2967,7 +2968,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                         });
                         final targetObj = classesList.firstWhere(
                           (c) => c.section == _selectedClass,
-                          orElse: () => classesList.first,
+                          orElse: () => classesList.isNotEmpty ? classesList.first : AppData.classes.first,
                         );
                         final targetId = targetObj.classId ?? targetObj.id ?? 1;
                         await _fetchClassSubjects(targetId, classesList, _selectedClass!, force: true);
@@ -2994,7 +2995,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                         });
                         final targetObj = classesList.firstWhere(
                           (c) => c.section == v,
-                          orElse: () => classesList.first,
+                          orElse: () => classesList.isNotEmpty ? classesList.first : AppData.classes.first,
                         );
                         final targetId = targetObj.classId ?? targetObj.id ?? 1;
                         _fetchClassSubjects(targetId, classesList, v);
@@ -3196,6 +3197,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
   Widget _buildMarksScreen({
     required BuildContext context,
     required bool isDark,
+    required List<TeacherClass> classesList,
     required List<Map<String, dynamic>> filteredMarks,
     required List<dynamic> activeStudents,
     required String avgScore,
@@ -3345,7 +3347,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                   onTap: () {
                     final targetObj = classesList.firstWhere(
                       (c) => c.section == _selectedClass,
-                      orElse: () => classesList.first,
+                      orElse: () => classesList.isNotEmpty ? classesList.first : AppData.classes.first,
                     );
                     final targetId = targetObj.classId ?? targetObj.id ?? 1;
                     _loadExistingMarks(targetId, targetObj.sectionId, targetObj.courseId, force: true);
