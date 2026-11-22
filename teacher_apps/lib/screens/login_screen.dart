@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/teacher_provider.dart';
-import '../services/api_service.dart';
 import 'main_shell.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -214,154 +213,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _error = authProvider.errorMessage ?? 'Login failed. Please check your credentials.';
       });
     }
-  }
-
-  void _showServerConfig() {
-    final apiService = ApiService();
-    final urlCtrl = TextEditingController(text: apiService.baseUrl);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Container(
-          padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Icon(Icons.dns_rounded, color: Color(0xFF0F4C81)),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'School API Endpoint',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(ctx),
-                  )
-                ],
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Select a preset endpoint or enter your custom school server URL:',
-                style: TextStyle(fontSize: 12.5, color: AppTheme.darkSubtext),
-              ),
-              const SizedBox(height: 14),
-              // Preset Chips
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ActionChip(
-                    avatar: const Icon(Icons.cloud_done_rounded, size: 14, color: Color(0xFF0F4C81)),
-                    label: const Text('nshlms.com (Live)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                    backgroundColor: urlCtrl.text == ApiService.liveProductionUrl ? const Color(0xFFE0E7FF) : const Color(0xFFF1F5F9),
-                    onPressed: () {
-                      setModalState(() {
-                        urlCtrl.text = ApiService.liveProductionUrl;
-                      });
-                    },
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.cloud_queue_rounded, size: 14, color: Color(0xFF0F4C81)),
-                    label: const Text('techprocod (Live)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                    backgroundColor: urlCtrl.text == ApiService.fallbackLiveUrl ? const Color(0xFFE0E7FF) : const Color(0xFFF1F5F9),
-                    onPressed: () {
-                      setModalState(() {
-                        urlCtrl.text = ApiService.fallbackLiveUrl;
-                      });
-                    },
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.wifi_rounded, size: 14, color: AppTheme.green),
-                    label: const Text('Local Wi-Fi (LAN)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                    backgroundColor: urlCtrl.text == ApiService.localLanUrl ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
-                    onPressed: () {
-                      setModalState(() {
-                        urlCtrl.text = ApiService.localLanUrl;
-                      });
-                    },
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.phone_android_rounded, size: 14, color: AppTheme.orange),
-                    label: const Text('Android Emulator', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                    backgroundColor: urlCtrl.text == ApiService.androidEmulatorUrl ? const Color(0xFFFFEDD5) : const Color(0xFFF1F5F9),
-                    onPressed: () {
-                      setModalState(() {
-                        urlCtrl.text = ApiService.androidEmulatorUrl;
-                      });
-                    },
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.computer_rounded, size: 14, color: Colors.blueGrey),
-                    label: const Text('Localhost:8000', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                    backgroundColor: urlCtrl.text == ApiService.localhostUrl ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9),
-                    onPressed: () {
-                      setModalState(() {
-                        urlCtrl.text = ApiService.localhostUrl;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: urlCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Base API URL',
-                  hintText: ApiService.liveProductionUrl,
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F4C81),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () async {
-                    await apiService.setCustomBaseUrl(urlCtrl.text.trim());
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: AppTheme.green,
-                          content: Text('Endpoint updated to ${apiService.baseUrl} ✅'),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Save & Reconnect', style: TextStyle(fontWeight: FontWeight.w800)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -594,48 +445,31 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 12),
                             const Divider(height: 1),
                             const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                OutlinedButton.icon(
-                                  onPressed: _showServerConfig,
-                                  icon: const Icon(Icons.settings_ethernet_rounded, size: 14),
-                                  label: const Text('Change Endpoint', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF0F4C81),
-                                    side: const BorderSide(color: Color(0xFF0F4C81)),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
+                            Center(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  final nav = Navigator.of(context);
+                                  final teacherProv = Provider.of<TeacherProvider>(context, listen: false);
+                                  final auth = Provider.of<AuthProvider>(context, listen: false);
+                                  await auth.loginInDemoMode(_idCtrl.text.trim());
+                                  if (!mounted) return;
+                                  teacherProv.refreshAll();
+                                  nav.pushReplacement(
+                                    MaterialPageRoute(builder: (_) => const MainShell()),
+                                  );
+                                },
+                                icon: const Icon(Icons.bolt_rounded, size: 14),
+                                label: const Text('Continue in Demo Mode', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.green,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  elevation: 0,
                                 ),
-                                ElevatedButton.icon(
-                                  onPressed: () async {
-                                    final nav = Navigator.of(context);
-                                    final teacherProv = Provider.of<TeacherProvider>(context, listen: false);
-                                    final auth = Provider.of<AuthProvider>(context, listen: false);
-                                    await auth.loginInDemoMode(_idCtrl.text.trim());
-                                    if (!mounted) return;
-                                    teacherProv.refreshAll();
-                                    nav.pushReplacement(
-                                      MaterialPageRoute(builder: (_) => const MainShell()),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.bolt_rounded, size: 14),
-                                  label: const Text('Enter Demo Mode', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.green,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    elevation: 0,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ],
                         ],
@@ -895,31 +729,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Offline Demo Mode & Server Config Button
+                  // Offline Demo Mode
                   Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (_) => const MainShell()),
-                            );
-                          },
-                          icon: const Icon(Icons.offline_bolt_outlined, size: 16, color: Color(0xFF64748B)),
-                          label: const Text(
-                            'Explore in Offline Demo Mode',
-                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF64748B)),
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        IconButton(
-                          icon: const Icon(Icons.dns_rounded, size: 15, color: Color(0xFF94A3B8)),
-                          tooltip: 'API Server Endpoint',
-                          onPressed: _showServerConfig,
-                        ),
-                      ],
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MainShell()),
+                        );
+                      },
+                      icon: const Icon(Icons.offline_bolt_outlined, size: 16, color: Color(0xFF64748B)),
+                      label: const Text(
+                        'Explore in Offline Demo Mode',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF64748B)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 28),

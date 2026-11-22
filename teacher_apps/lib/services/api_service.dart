@@ -72,14 +72,12 @@ class ApiService {
         .add(const Duration(hours: sessionTimeoutHours));
   }
 
-  /// Initialize API service and load cached token / server preferences
+  /// Initialize API service and load cached token / session data
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(_tokenKey);
-    final customUrl = prefs.getString(_serverUrlKey);
-    if (customUrl != null && customUrl.isNotEmpty) {
-      _baseUrl = customUrl;
-    }
+    _baseUrl = liveProductionUrl;
+    await prefs.remove(_serverUrlKey);
     _sessionTimestamp = prefs.getInt(_sessionTimestampKey);
     if (_token != null && isSessionExpired()) {
       await logout();
@@ -163,8 +161,8 @@ class ApiService {
       final errStr = e.toString();
       final isDnsFail = errStr.contains('Failed host lookup') || errStr.contains('SocketException');
       final cleanMsg = isDnsFail
-          ? 'Network error: Unable to reach school server at $_baseUrl. Host lookup failed (check internet connection or switch server endpoint in DNS settings).'
-          : 'Network error: Unable to reach school server ($e)';
+          ? 'Network error: Unable to reach school server. Please verify your internet connection and try again.'
+          : 'Network error: Unable to reach school server. Please check your internet connection.';
       return ApiResponse(
         success: false,
         message: cleanMsg,

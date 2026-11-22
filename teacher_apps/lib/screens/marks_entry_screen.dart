@@ -513,7 +513,20 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
           setState(() {
             _availableExams = names;
             if (!names.contains(_selectedExam)) {
-              _selectedExam = names.first;
+              final lowerCurrent = _selectedExam.toLowerCase();
+              String? matchingTerm;
+              for (var n in names) {
+                final lowerN = n.toLowerCase();
+                if ((lowerCurrent.contains('second') && lowerN.contains('second')) ||
+                    (lowerCurrent.contains('first') && lowerN.contains('first')) ||
+                    (lowerCurrent.contains('third') && lowerN.contains('third')) ||
+                    ((lowerCurrent.contains('final') || lowerCurrent.contains('annual')) &&
+                     (lowerN.contains('final') || lowerN.contains('annual')))) {
+                  matchingTerm = n;
+                  break;
+                }
+              }
+              _selectedExam = matchingTerm ?? names.first;
             }
           });
         }
@@ -712,21 +725,23 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
     }).toList();
   }
 
-  Future<void> _loadExistingMarks(int classId, int? sectionId, int? courseId) async {
+  Future<void> _loadExistingMarks(int classId, int? sectionId, int? courseId, {bool force = false}) async {
     if (mounted) setState(() => _isLoadingMarks = true);
 
     // 1. Immediately restore local cached marks if available (Fast 0-delay display)
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cacheKey = 'nsh_cached_marks_${classId}_$_selectedExam';
-      final cachedJson = prefs.getString(cacheKey);
-      if (cachedJson != null && cachedJson.isNotEmpty) {
-        final decoded = jsonDecode(cachedJson);
-        if (decoded is List && mounted) {
-          _applyMarksToStudentControllers(decoded);
+    if (!force) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cacheKey = 'nsh_cached_marks_${classId}_$_selectedExam';
+        final cachedJson = prefs.getString(cacheKey);
+        if (cachedJson != null && cachedJson.isNotEmpty) {
+          final decoded = jsonDecode(cachedJson);
+          if (decoded is List && mounted && decoded.isNotEmpty) {
+            _applyMarksToStudentControllers(decoded);
+          }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     // 2. Fetch official server marks from live database
     try {
@@ -821,6 +836,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
   }
 
   void _applyMarksToStudentControllers(List existing) {
+    _rebuildSubjectControllersForStudents();
     final markMap = <int, Map<dynamic, double>>{};
     final thMap = <int, Map<dynamic, double>>{};
     final prMap = <int, Map<dynamic, double>>{};
@@ -3314,6 +3330,33 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                   borderColor: isDark ? const Color(0xFF10B981) : const Color(0xFFA7F3D0),
                   textColor: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
                   onTap: _recalculateAll,
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+
+                // Reload Live Marks
+                _buildToolbarButton(
+                  icon: Icons.sync_rounded,
+                  label: 'Reload Marks',
+                  color: const Color(0xFF6366F1),
+                  backgroundColor: isDark ? const Color(0xFF312E81).withOpacity(0.3) : const Color(0xFFEEF2FF),
+                  borderColor: isDark ? const Color(0xFF6366F1) : const Color(0xFFC7D2FE),
+                  textColor: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                  onTap: () {
+                    final targetObj = classesList.firstWhere(
+                      (c) => c.section == _selectedClass,
+                      orElse: () => classesList.first,
+                    );
+                    final targetId = targetObj.classId ?? targetObj.id ?? 1;
+                    _loadExistingMarks(targetId, targetObj.sectionId, targetObj.courseId, force: true);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Reloaded marks from live database! 🔄'),
+                        duration: Duration(seconds: 1),
+                        backgroundColor: AppTheme.primary,
+                      ),
+                    );
+                  },
                   isDark: isDark,
                 ),
                 const SizedBox(width: 8),
