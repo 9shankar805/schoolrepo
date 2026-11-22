@@ -38,8 +38,11 @@ class _CertificateManagerScreenState extends State<CertificateManagerScreen>
 
   static const List<Map<String, String>> _certificateTypes = [
     {'key': 'all', 'label': 'All Certificates'},
+    {'key': 'transfer', 'label': 'Transfer (TC)'},
     {'key': 'character', 'label': 'Character Certificate'},
-    {'key': 'bonafide', 'label': 'Bonafide Study Certificate'},
+    {'key': 'bonafide', 'label': 'Bonafide Certificate'},
+    {'key': 'school_leaving', 'label': 'School Leaving (SLC)'},
+    {'key': 'migration', 'label': 'Migration Certificate'},
     {'key': 'admission', 'label': 'Admission Proof'},
     {'key': 'achievement', 'label': 'Merit & Achievement'},
   ];
@@ -493,7 +496,59 @@ class _CertificateManagerScreenState extends State<CertificateManagerScreen>
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Core 4 Main Certificates Header & Carousel
+                  Row(
+                    children: [
+                      Container(width: 3.5, height: 15, decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(2))),
+                      const SizedBox(width: 7),
+                      Text('Core Certificates', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.dark)),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(6)),
+                        child: Text('Essential 4', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildCoreCertQuickCard(
+                          title: 'Transfer (TC)',
+                          nepali: 'स्थानान्तरण प्रमाण-पत्र',
+                          icon: Icons.output_rounded,
+                          color: const Color(0xFF4F46E5),
+                          typeKey: 'transfer',
+                        ),
+                        _buildCoreCertQuickCard(
+                          title: 'Character Cert',
+                          nepali: 'चारित्रिक प्रमाण-पत्र',
+                          icon: Icons.verified_rounded,
+                          color: const Color(0xFF059669),
+                          typeKey: 'character',
+                        ),
+                        _buildCoreCertQuickCard(
+                          title: 'Bonafide Cert',
+                          nepali: 'बोनाफाइड प्रमाण-पत्र',
+                          icon: Icons.badge_outlined,
+                          color: const Color(0xFF0284C7),
+                          typeKey: 'bonafide',
+                        ),
+                        _buildCoreCertQuickCard(
+                          title: 'Leaving (SLC)',
+                          nepali: 'विद्यालय छाडेको',
+                          icon: Icons.school_rounded,
+                          color: const Color(0xFF7C3AED),
+                          typeKey: 'school_leaving',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Container(
                     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
                     child: TextField(
@@ -828,15 +883,89 @@ class _CertificateManagerScreenState extends State<CertificateManagerScreen>
     );
   }
 
+  Widget _buildCoreCertQuickCard({
+    required String title,
+    required String nepali,
+    required IconData icon,
+    required Color color,
+    required String typeKey,
+  }) {
+    return Container(
+      width: 145,
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(color: color.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              InkWell(
+                onTap: () => _showGenerateCertificateSheet(typeKey),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add, color: Colors.white, size: 11),
+                      const SizedBox(width: 2),
+                      Text('Issue', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.dark), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(nepali, style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w500, color: AppTheme.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    );
+  }
+
   // Generate Certificate Sheet
-  void _showGenerateCertificateSheet() {
+  void _showGenerateCertificateSheet([String initialType = 'character']) {
     int? selectedStudentId;
     String? selectedStudentName;
     List<dynamic> studentSearchResults = [];
     bool isSearching = false;
 
-    String certType = 'character';
-    final TextEditingController purposeCtrl = TextEditingController(text: 'Academic verification & further studies');
+    String certType = initialType;
+    final Map<String, String> defaultPurposes = {
+      'transfer': 'Transfer to another recognized institution / college',
+      'character': 'Academic verification & higher studies application',
+      'bonafide': 'Official verification / passport / bank / scholarship',
+      'school_leaving': 'Completion of secondary school course & higher studies',
+      'migration': 'Board migration & university admission clearance',
+      'admission': 'Proof of enrollment & admission verification',
+      'achievement': 'Academic & co-curricular excellence recognition',
+    };
+    final TextEditingController purposeCtrl = TextEditingController(
+      text: defaultPurposes[initialType] ?? 'Academic verification & further studies',
+    );
     bool withDigitalStamp = true;
     bool withSignature = true;
     String language = 'en';
@@ -932,8 +1061,11 @@ class _CertificateManagerScreenState extends State<CertificateManagerScreen>
                   value: certType,
                   decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
                   items: const [
+                    DropdownMenuItem(value: 'transfer', child: Text('Transfer Certificate (TC)')),
                     DropdownMenuItem(value: 'character', child: Text('Character Certificate')),
                     DropdownMenuItem(value: 'bonafide', child: Text('Bonafide Study Certificate')),
+                    DropdownMenuItem(value: 'school_leaving', child: Text('School Leaving Certificate (SLC)')),
+                    DropdownMenuItem(value: 'migration', child: Text('Migration Certificate')),
                     DropdownMenuItem(value: 'admission', child: Text('Proof of Admission')),
                     DropdownMenuItem(value: 'achievement', child: Text('Achievement & Honors Certificate')),
                   ],
