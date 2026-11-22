@@ -1,4 +1,4 @@
-package com.nepalschoolhub.teacher_app
+package com.nshlms.guru
 
 import io.flutter.embedding.android.FlutterActivity
 

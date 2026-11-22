@@ -2,8 +2,8 @@
 
 **Last Updated:** November 11, 2026  
 **Effective Date:** November 11, 2026  
-**Application Name:** Nepal School Hub - Guru (Teacher App)  
-**Package Name / Application ID:** `com.nepalschoolhub.teacher_app`  
+**Application Name:** GURU (NSHLMS Teacher App)  
+**Package Name / Application ID:** `com.nshlms.guru`  
 **Developer / Platform:** Nepal School Hub (NSHLMS)  
 **Official Website:** https://nshlms.com  
 

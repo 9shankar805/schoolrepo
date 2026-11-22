@@ -21,7 +21,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.nepalschoolhub.teacher_app"
+    namespace = "com.nshlms.guru"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -53,7 +53,7 @@ android {
 
     defaultConfig {
         // Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.nepalschoolhub.teacher_app"
+        applicationId = "com.nshlms.guru"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
