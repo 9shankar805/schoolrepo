@@ -296,37 +296,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ],
                           ),
-                          if (_error!.contains('Network error') || _error!.contains('Unable to reach') || _error!.contains('Host lookup') || _error!.contains('SocketException')) ...[
-                            const SizedBox(height: 12),
-                            const Divider(height: 1),
-                            const SizedBox(height: 10),
-                            Center(
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  final nav = Navigator.of(context);
-                                  final teacherProv = Provider.of<TeacherProvider>(context, listen: false);
-                                  final auth = Provider.of<AuthProvider>(context, listen: false);
-                                  await auth.loginInDemoMode(_idCtrl.text.trim());
-                                  if (!mounted) return;
-                                  teacherProv.refreshAll();
-                                  nav.pushReplacement(
-                                    MaterialPageRoute(builder: (_) => const MainShell()),
-                                  );
-                                },
-                                icon: const Icon(Icons.bolt_rounded, size: 14),
-                                label: const Text('Continue in Demo Mode', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.green,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  elevation: 0,
-                                ),
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -580,24 +549,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Offline Demo Mode
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const MainShell()),
-                        );
-                      },
-                      icon: const Icon(Icons.offline_bolt_outlined, size: 16, color: Color(0xFF64748B)),
-                      label: const Text(
-                        'Explore in Offline Demo Mode',
-                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF64748B)),
-                      ),
                     ),
                   ),
                   const SizedBox(height: 28),
