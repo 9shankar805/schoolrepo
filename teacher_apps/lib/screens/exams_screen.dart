@@ -13,10 +13,12 @@ class ExamsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final teacherProvider = Provider.of<TeacherProvider>(context);
     final examList = teacherProvider.examList;
     final classesList = teacherProvider.teacherClasses;
     return Scaffold(
+      backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
       appBar: AppBar(
         title: const Text('Exams & Grading'),
         leading: CircleIconButton(
@@ -34,9 +36,12 @@ class ExamsScreen extends StatelessWidget {
           const SizedBox(width: 16),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      body: RefreshIndicator(
+        onRefresh: () => teacherProvider.fetchExams(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // AI Studio & Marks Entry Action Banners
           Row(children: [
             Expanded(
@@ -79,23 +84,23 @@ class ExamsScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? AppTheme.darkCard : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                    border: Border.all(color: isDark ? AppTheme.darkCardBorder : AppTheme.primary.withOpacity(0.3)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       )
                     ],
                   ),
-                  child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Icon(Icons.edit_note_rounded, color: AppTheme.primary, size: 26),
-                    SizedBox(height: 8),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Icon(Icons.edit_note_rounded, color: AppTheme.primary, size: 26),
+                    const SizedBox(height: 8),
                     Text('Enter Marks',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppTheme.dark)),
-                    Text('Theory + Practical (CDC)',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: isDark ? Colors.white : AppTheme.dark)),
+                    const Text('Theory + Practical (CDC)',
                         style: TextStyle(color: AppTheme.grey, fontSize: 10)),
                   ]),
                 ),
@@ -123,50 +128,94 @@ class ExamsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  Row(children: [
-                    Container(
-                      width: 56, height: 56,
-                      decoration: BoxDecoration(
-                        color: Color(exam.colorHex),
-                        borderRadius: BorderRadius.circular(16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 54, height: 54,
+                        decoration: BoxDecoration(
+                          color: Color(exam.colorHex),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Text('${exam.daysLeft}', style: TextStyle(
+                              fontSize: 19, fontWeight: FontWeight.w900,
+                              color: exam.daysLeft <= 7 ? AppTheme.red : AppTheme.orange)),
+                          const Text('days', style: TextStyle(
+                              fontSize: 9, color: AppTheme.grey, fontWeight: FontWeight.w600)),
+                        ]),
                       ),
-                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Text('${exam.daysLeft}', style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w900,
-                            color: exam.daysLeft <= 7 ? AppTheme.red : AppTheme.orange)),
-                        Text('days', style: const TextStyle(
-                            fontSize: 9, color: AppTheme.grey)),
-                      ]),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(exam.subject, style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text('${exam.type} • ${exam.classSection}',
-                          style: const TextStyle(fontSize: 12, color: AppTheme.grey)),
-                      const SizedBox(height: 4),
-                      Row(children: [
-                        const Icon(Icons.calendar_today_outlined,
-                            size: 11, color: AppTheme.grey),
-                        const SizedBox(width: 4),
-                        Text('${exam.date} • ${exam.time}',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.grey)),
-                      ]),
-                      const SizedBox(height: 2),
-                      Row(children: [
-                        const Icon(Icons.room_outlined, size: 11, color: AppTheme.grey),
-                        const SizedBox(width: 4),
-                        Text(exam.room,
-                            style: const TextStyle(fontSize: 11, color: AppTheme.grey)),
-                      ]),
-                    ])),
-                    PillBadge(
-                      label: exam.type,
-                      color: AppTheme.primary.withOpacity(0.1),
-                      textColor: AppTheme.primary,
-                    ),
-                  ]),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    exam.subject,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                PillBadge(
+                                  label: exam.type,
+                                  color: AppTheme.primary.withOpacity(0.1),
+                                  textColor: AppTheme.primary,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              exam.classSection,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_today_outlined,
+                                    size: 11, color: AppTheme.grey),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    '${exam.date} • ${exam.time}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, color: AppTheme.grey),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                const Icon(Icons.room_outlined, size: 11, color: AppTheme.grey),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    exam.room,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, color: AppTheme.grey),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   const Divider(height: 1),
                   const SizedBox(height: 8),
@@ -211,10 +260,15 @@ class ExamsScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(['Mathematics Mid-Term', 'Statistics Quiz'][i],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                 Text(['Grade 10 - A • Jul 15, 2025', 'Grade 12 - A • Jul 10, 2025'][i],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 11, color: AppTheme.grey)),
               ])),
+              const SizedBox(width: 8),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text(['Avg: 78%', 'Avg: 82%'][i],
                     style: const TextStyle(fontSize: 13,
@@ -225,15 +279,17 @@ class ExamsScreen extends StatelessWidget {
             ]),
           ).animate().fadeIn(delay: (i * 60).ms)),
         ]),
+        ),
       ),
     );
   }
 
   void _showAddExamSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => Padding(
@@ -241,22 +297,22 @@ class ExamsScreen extends StatelessWidget {
             24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
         child: Column(mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Schedule Exam', style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.dark)),
+          Text('Schedule Exam', style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppTheme.dark)),
           const SizedBox(height: 20),
           TextField(decoration: InputDecoration(labelText: 'Subject',
-              filled: true, fillColor: AppTheme.lightBg,
+              filled: true, fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none))),
           const SizedBox(height: 12),
           Row(children: [
             Expanded(child: TextField(decoration: InputDecoration(labelText: 'Date',
-                filled: true, fillColor: AppTheme.lightBg,
+                filled: true, fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none)))),
+                  borderSide: BorderSide.none)))),
             const SizedBox(width: 12),
             Expanded(child: TextField(decoration: InputDecoration(labelText: 'Room',
-                filled: true, fillColor: AppTheme.lightBg,
+                filled: true, fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none)))),
           ]),

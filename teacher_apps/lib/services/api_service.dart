@@ -260,9 +260,12 @@ class ApiService {
     return _get<Map<String, dynamic>>('$_baseUrl/classes/$classId');
   }
 
-  Future<ApiResponse<List<dynamic>>> getClassSubjects(int classId, {int? semesterId}) async {
-    final q = semesterId != null ? '?semester_id=$semesterId' : '';
-    return _get<List<dynamic>>('$_baseUrl/classes/$classId/subjects$q');
+  Future<ApiResponse<List<dynamic>>> getClassSubjects(int classId, {int? semesterId, String? examName}) async {
+    final q = <String>[];
+    if (semesterId != null && semesterId > 0) q.add('semester_id=$semesterId');
+    if (examName != null && examName.isNotEmpty) q.add('exam_name=${Uri.encodeQueryComponent(examName)}');
+    final queryStr = q.isNotEmpty ? '?${q.join('&')}' : '';
+    return _get<List<dynamic>>('$_baseUrl/classes/$classId/subjects$queryStr');
   }
 
   Future<ApiResponse<List<dynamic>>> getTopStudents(String classId) async {
@@ -474,6 +477,10 @@ class ApiService {
     return _get<List<dynamic>>('$_baseUrl/exams');
   }
 
+  Future<ApiResponse<List<dynamic>>> getExamTerms() async {
+    return _get<List<dynamic>>('$_baseUrl/exams/terms');
+  }
+
   Future<ApiResponse<List<dynamic>>> getExamMarks({
     String? examId,
     String? examName,
@@ -508,6 +515,30 @@ class ApiService {
     return res;
   }
 
+  Future<ApiResponse<dynamic>> updateExamRule({
+    required int classId,
+    required int courseId,
+    String? courseName,
+    int? semesterId,
+    String? examName,
+    required double totalMarks,
+    required double passMarks,
+    double? thFm,
+    double? prFm,
+  }) async {
+    return _post('$_baseUrl/exams/rule', {
+      'class_id': classId,
+      'course_id': courseId,
+      if (courseName != null && courseName.isNotEmpty) 'course_name': courseName,
+      if (semesterId != null && semesterId > 0) 'semester_id': semesterId,
+      if (examName != null && examName.isNotEmpty) 'exam_name': examName,
+      'total_marks': totalMarks,
+      'pass_marks': passMarks,
+      if (thFm != null) 'th_fm': thFm,
+      if (prFm != null) 'pr_fm': prFm,
+    });
+  }
+
   // ==========================================
   // 9. AI QUESTION PAPERS
   // ==========================================
@@ -536,6 +567,10 @@ class ApiService {
     return _get<List<dynamic>>('$_baseUrl/announcements');
   }
 
+  Future<ApiResponse<dynamic>> createAnnouncement(Map<String, dynamic> data) async {
+    return _post('$_baseUrl/announcements', data);
+  }
+
   Future<ApiResponse<List<dynamic>>> getTodos() async {
     return _get<List<dynamic>>('$_baseUrl/todos');
   }
@@ -561,7 +596,16 @@ class ApiService {
   }
 
   Future<ApiResponse<dynamic>> updateProfile(Map<String, dynamic> data) async {
+    if (data.containsKey('photo') || data.containsKey('photo_base64')) {
+      return _post('$_baseUrl/teacher/profile', data);
+    }
     return _put('$_baseUrl/teacher/profile', data);
+  }
+
+  Future<ApiResponse<dynamic>> updateProfilePhoto(String base64Image) async {
+    return _post('$_baseUrl/teacher/profile/photo', {
+      'photo_base64': base64Image,
+    });
   }
 
   Future<ApiResponse<dynamic>> changePassword(String currentPassword, String newPassword, String confirmPassword) async {
@@ -763,6 +807,8 @@ class ApiService {
             payload = data['subjects'];
           } else if (data.containsKey('courses') && data['courses'] is List) {
             payload = data['courses'];
+          } else if (data.containsKey('terminal_assessments') && data['terminal_assessments'] is List) {
+            payload = data['terminal_assessments'];
           }
         } else {
           if (data.containsKey('data') && data['data'] is Map) {

@@ -381,8 +381,9 @@ class _LoginScreenState extends State<LoginScreen> {
               // App Logo & Branding
               Center(
                 child: Container(
-                  width: 80,
-                  height: 80,
+                  width: 84,
+                  height: 84,
+                  padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     gradient: AppTheme.primaryGradient,
                     borderRadius: BorderRadius.circular(24),
@@ -394,7 +395,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.family_restroom_rounded, size: 44, color: Colors.white),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(21),
+                    child: Image.asset(
+                      'assets/icons/icon.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: AppTheme.primary,
+                        child: const Icon(Icons.family_restroom_rounded, size: 44, color: Colors.white),
+                      ),
+                    ),
+                  ),
                 ),
               ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
               const SizedBox(height: 20),

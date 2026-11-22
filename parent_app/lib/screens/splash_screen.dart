@@ -50,14 +50,33 @@ class _SplashScreenState extends State<SplashScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 100,
-                height: 100,
+                width: 104,
+                height: 104,
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.white38, width: 2),
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                child: const Icon(Icons.family_restroom_rounded, size: 54, color: Colors.white),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.asset(
+                    'assets/icons/icon.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.family_restroom_rounded,
+                      size: 54,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
               )
                   .animate()
                   .scale(duration: 600.ms, curve: Curves.elasticOut)

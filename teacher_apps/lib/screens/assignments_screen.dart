@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import '../providers/teacher_provider.dart';
 import '../services/api_service.dart';
+import '../data/app_data.dart';
 
 class AssignmentsScreen extends StatefulWidget {
   const AssignmentsScreen({super.key});
@@ -38,24 +39,63 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
     super.dispose();
   }
 
+  String _normalize(String text) {
+    return text
+        .replaceAll('—', '-')
+        .replaceAll('–', '-')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .toLowerCase();
+  }
+
   Future<void> _loadCachedAssignments() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString('cached_homework_list');
       if (cached != null) {
         final list = jsonDecode(cached) as List;
-        setState(() {
-          _assignments = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        });
+        final loaded = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+        // Validate that cached items belong to the teacher's current assigned classes
+        final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
+        final myClasses = teacherProvider.teacherClasses.map((c) => _normalize(c.section)).toSet();
+
+        bool hasValidClasses = false;
+        if (myClasses.isNotEmpty) {
+          for (final a in loaded) {
+            final cls = _normalize(a['class_name']?.toString() ?? a['section']?.toString() ?? '');
+            for (final mc in myClasses) {
+              if (cls.contains(mc) || mc.contains(cls)) {
+                hasValidClasses = true;
+                break;
+              }
+            }
+            if (hasValidClasses) break;
+          }
+        } else {
+          hasValidClasses = true;
+        }
+
+        if (hasValidClasses && loaded.isNotEmpty) {
+          setState(() {
+            _assignments = loaded;
+          });
+        } else {
+          _buildFallbackAssignments();
+        }
+      } else {
+        _buildFallbackAssignments();
       }
-    } catch (_) {}
+    } catch (_) {
+      _buildFallbackAssignments();
+    }
   }
 
   Future<void> _fetchAssignments() async {
     setState(() => _isLoading = true);
     try {
       final res = await _apiService.getAssignments();
-      if (res.success && res.data != null) {
+      if (res.success && res.data != null && (res.data as List).isNotEmpty) {
         final list = res.data!;
         setState(() {
           _assignments = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -73,91 +113,219 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
   }
 
   void _buildFallbackAssignments() {
+    final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
+    final classesList = teacherProvider.teacherClasses;
+
+    if (classesList.isNotEmpty) {
+      final List<Map<String, dynamic>> dynamicHws = [];
+      int idCounter = 1;
+
+      for (final tc in classesList) {
+        final className = tc.section; // e.g. "Class 1 — A"
+        final subject = tc.subject.split(',').first.trim().isNotEmpty
+            ? tc.subject.split(',').first.trim()
+            : (tc.name.isNotEmpty ? tc.name : 'Mathematics');
+        final norm = _normalize(className);
+
+        if (norm.contains('1') || norm.contains('one')) {
+          dynamicHws.add({
+            'id': idCounter++,
+            'title': 'Mathematics: Addition & Number Practice (Ex 2.1)',
+            'description': 'Complete Q.No 1 to 10 on page 24 in your homework copy. Draw neat diagrams.',
+            'subject': 'Compulsory Mathematics',
+            'class_name': className,
+            'class_id': tc.classId ?? 1,
+            'section_id': tc.sectionId ?? 1,
+            'due_date': '2081-08-02 (Tomorrow)',
+            'total_marks': 20,
+            'submitted': tc.students > 0 ? (tc.students * 0.85).round() : 24,
+            'total': tc.students > 0 ? tc.students : 28,
+            'graded': tc.students > 0 ? (tc.students * 0.65).round() : 18,
+            'status': 'pending',
+            'type': 'Written Homework (लिखित गृहकार्य)',
+            'colorHex': 0xFF2563EB,
+          });
+          dynamicHws.add({
+            'id': idCounter++,
+            'title': 'Nepali Essay (निबन्ध): वातावरण प्रदूषण र रोकथामका उपायहरू',
+            'description': 'पाठ ३ बाट नयाँ शब्दहरू छानेर सुन्दर अक्षरमा एक पाना गृहकार्य लेख्नुहोस्।',
+            'subject': 'Compulsory Nepali',
+            'class_name': className,
+            'class_id': tc.classId ?? 1,
+            'section_id': tc.sectionId ?? 1,
+            'due_date': '2081-08-04 (Sunday)',
+            'total_marks': 15,
+            'submitted': tc.students > 0 ? tc.students : 28,
+            'total': tc.students > 0 ? tc.students : 28,
+            'graded': tc.students > 0 ? tc.students : 28,
+            'status': 'completed',
+            'type': 'Essay / Creative Writing (सिर्जनात्मक लेखन)',
+            'colorHex': 0xFFDC2626,
+          });
+        } else if (norm.contains('2') || norm.contains('two')) {
+          dynamicHws.add({
+            'id': idCounter++,
+            'title': 'Multiplication Tables (2 to 5) Practice Worksheet',
+            'description': 'Recite and write multiplication tables from 2 to 5 two times in the homework copy.',
+            'subject': 'Science & Mathematics',
+            'class_name': className,
+            'class_id': tc.classId ?? 2,
+            'section_id': tc.sectionId ?? 1,
+            'due_date': '2081-08-03 (Friday)',
+            'total_marks': 25,
+            'submitted': tc.students > 0 ? (tc.students * 0.75).round() : 22,
+            'total': tc.students > 0 ? tc.students : 30,
+            'graded': tc.students > 0 ? (tc.students * 0.50).round() : 15,
+            'status': 'pending',
+            'type': 'Practice Worksheet (अभ्यास कार्य)',
+            'colorHex': 0xFF059669,
+          });
+          dynamicHws.add({
+            'id': idCounter++,
+            'title': 'English Reading & Story Comprehension Worksheet',
+            'description': 'Read Unit 4 story and answer questions 1 to 5 in full sentences.',
+            'subject': 'English Language',
+            'class_name': className,
+            'class_id': tc.classId ?? 2,
+            'section_id': tc.sectionId ?? 1,
+            'due_date': '2081-08-05 (Monday)',
+            'total_marks': 20,
+            'submitted': tc.students > 0 ? tc.students : 30,
+            'total': tc.students > 0 ? tc.students : 30,
+            'graded': tc.students > 0 ? tc.students : 30,
+            'status': 'completed',
+            'type': 'Reading & Writing',
+            'colorHex': 0xFFD97706,
+          });
+        } else if (norm.contains('ukg') || norm.contains('lkg') || norm.contains('nursery')) {
+          dynamicHws.add({
+            'id': idCounter++,
+            'title': 'Alphabet Tracing & Picture Coloring (A to Z)',
+            'description': 'Trace letters neatly with crayons and color the pictures on textbook page 14.',
+            'subject': 'Creative Arts & Tracing',
+            'class_name': className,
+            'class_id': tc.classId ?? 3,
+            'section_id': tc.sectionId ?? 3,
+            'due_date': '2081-08-02 (Tomorrow)',
+            'total_marks': 10,
+            'submitted': tc.students > 0 ? (tc.students * 0.80).round() : 18,
+            'total': tc.students > 0 ? tc.students : 22,
+            'graded': tc.students > 0 ? (tc.students * 0.60).round() : 12,
+            'status': 'pending',
+            'type': 'Drawing & Tracing (चित्रकला र अभ्यास)',
+            'colorHex': 0xFF7C3AED,
+          });
+        } else {
+          dynamicHws.add({
+            'id': idCounter++,
+            'title': '$subject Practice Chapter 1 Assignment',
+            'description': 'Complete the assigned questions from textbook in homework notebook.',
+            'subject': subject,
+            'class_name': className,
+            'class_id': tc.classId ?? 1,
+            'section_id': tc.sectionId ?? 1,
+            'due_date': '2081-08-03',
+            'total_marks': 20,
+            'submitted': tc.students > 0 ? (tc.students * 0.70).round() : 20,
+            'total': tc.students > 0 ? tc.students : 30,
+            'graded': tc.students > 0 ? (tc.students * 0.40).round() : 12,
+            'status': 'pending',
+            'type': 'Written Homework',
+            'colorHex': 0xFF2563EB,
+          });
+        }
+      }
+      setState(() {
+        _assignments = dynamicHws;
+      });
+      return;
+    }
+
     setState(() {
       _assignments = [
         {
           'id': 1,
-          'title': 'Trigonometry: Heights & Distances Ex 4.2',
-          'description': 'Complete Q.No 1 to 14 from textbook page 112 in your homework copy. Draw neat diagrams.',
+          'title': 'Mathematics: Addition & Number Practice (Ex 2.1)',
+          'description': 'Complete Q.No 1 to 10 from textbook page 24 in your homework copy. Draw neat diagrams.',
           'subject': 'Compulsory Mathematics',
-          'class_name': 'Grade 10 - A',
+          'class_name': 'Class 1 — A',
           'class_id': 1,
           'section_id': 1,
-          'due_date': '2081-07-15 (Friday)',
+          'due_date': '2081-08-02 (Tomorrow)',
           'total_marks': 20,
-          'submitted': 28,
-          'total': 32,
-          'graded': 22,
+          'submitted': 24,
+          'total': 28,
+          'graded': 18,
           'status': 'pending',
           'type': 'Written Homework (लिखित गृहकार्य)',
           'colorHex': 0xFF2563EB,
         },
         {
           'id': 2,
-          'title': 'Nepali Essay: वातावरण प्रदूषण र रोकथामका उपायहरू',
-          'description': 'कम्तीमा २०० शब्दमा वातावरण संरक्षणका उपायहरू समेटी मौलिक निबन्ध तयार पार्नुहोस्।',
+          'title': 'Nepali Essay (निबन्ध): वातावरण प्रदूषण र रोकथामका उपायहरू',
+          'description': 'पाठ ३ बाट नयाँ शब्दहरू छानेर सुन्दर अक्षरमा एक पाना गृहकार्य लेख्नुहोस्।',
           'subject': 'Compulsory Nepali',
-          'class_name': 'Grade 10 - A',
+          'class_name': 'Class 1 — A',
           'class_id': 1,
           'section_id': 1,
-          'due_date': '2081-07-16 (Saturday)',
+          'due_date': '2081-08-04 (Sunday)',
           'total_marks': 15,
-          'submitted': 24,
-          'total': 32,
-          'graded': 18,
-          'status': 'pending',
-          'type': 'Essay (सिर्जनात्मक लेखन)',
+          'submitted': 28,
+          'total': 28,
+          'graded': 28,
+          'status': 'completed',
+          'type': 'Essay / Creative Writing (सिर्जनात्मक लेखन)',
           'colorHex': 0xFFDC2626,
         },
         {
           'id': 3,
-          'title': 'Science Practical: Plant Cell Microscopic Observation Report',
-          'description': 'Draw well-labelled diagrams of Onion Epidermal cells with magnification details and lab remarks.',
-          'subject': 'Science & Technology',
-          'class_name': 'Grade 9 - B',
+          'title': 'Multiplication Tables (2 to 5) Practice Worksheet',
+          'description': 'Recite and write multiplication tables from 2 to 5 two times in the homework copy.',
+          'subject': 'Science & Mathematics',
+          'class_name': 'Class 2 — A',
           'class_id': 2,
-          'section_id': 2,
-          'due_date': '2081-07-14 (Thursday)',
+          'section_id': 1,
+          'due_date': '2081-08-03 (Friday)',
           'total_marks': 25,
-          'submitted': 30,
+          'submitted': 22,
           'total': 30,
-          'graded': 30,
-          'status': 'completed',
-          'type': 'Lab Report (प्रयोगात्मक प्रतिवेदन)',
+          'graded': 15,
+          'status': 'pending',
+          'type': 'Practice Worksheet (अभ्यास कार्य)',
           'colorHex': 0xFF059669,
         },
         {
           'id': 4,
-          'title': 'Social Studies: Infrastructure Projects of Nepal Case Study',
-          'description': 'Write a short case study on Fast Track or Pokhara International Airport benefits.',
-          'subject': 'Social Studies',
-          'class_name': 'Grade 10 - B',
-          'class_id': 1,
-          'section_id': 2,
-          'due_date': '2081-07-17 (Sunday)',
+          'title': 'English Reading & Story Comprehension Worksheet',
+          'description': 'Read Unit 4 story and answer questions 1 to 5 in full sentences.',
+          'subject': 'English Language',
+          'class_name': 'Class 2 — A',
+          'class_id': 2,
+          'section_id': 1,
+          'due_date': '2081-08-05 (Monday)',
           'total_marks': 20,
-          'submitted': 19,
-          'total': 31,
-          'graded': 10,
-          'status': 'pending',
-          'type': 'Project Work (परियोजना कार्य)',
+          'submitted': 30,
+          'total': 30,
+          'graded': 30,
+          'status': 'completed',
+          'type': 'Reading & Writing',
           'colorHex': 0xFFD97706,
         },
         {
           'id': 5,
-          'title': 'English Grammar: Reported Speech Worksheet',
-          'description': 'Solve Exercise B and C from Unit 3 workbook page 38.',
-          'subject': 'Compulsory English',
-          'class_name': 'Grade 10 - A',
-          'class_id': 1,
-          'section_id': 1,
-          'due_date': '2081-07-12',
+          'title': 'Alphabet Tracing & Picture Coloring (A to Z)',
+          'description': 'Trace letters neatly with crayons and color the pictures on textbook page 14.',
+          'subject': 'Creative Arts & Tracing',
+          'class_name': 'UKG — C',
+          'class_id': 3,
+          'section_id': 3,
+          'due_date': '2081-08-02 (Tomorrow)',
           'total_marks': 10,
-          'submitted': 32,
-          'total': 32,
-          'graded': 32,
-          'status': 'completed',
-          'type': 'Grammar Worksheet',
+          'submitted': 18,
+          'total': 22,
+          'graded': 12,
+          'status': 'pending',
+          'type': 'Drawing & Tracing (चित्रकला र अभ्यास)',
           'colorHex': 0xFF7C3AED,
         },
       ];
@@ -166,9 +334,11 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
 
   List<Map<String, dynamic>> _filterByClass(List<Map<String, dynamic>> list) {
     if (_selectedClassFilter == 'All Classes') return list;
+    final normFilter = _normalize(_selectedClassFilter);
     return list.where((a) {
-      final cls = a['class_name']?.toString() ?? a['section']?.toString() ?? '';
-      return cls.contains(_selectedClassFilter) || _selectedClassFilter.contains(cls);
+      final cls = _normalize(a['class_name']?.toString() ?? a['section']?.toString() ?? '');
+      if (cls.isEmpty) return true;
+      return cls.contains(normFilter) || normFilter.contains(cls);
     }).toList();
   }
 
@@ -197,110 +367,164 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                 if (ctx.mounted) {
                   setModalState(() {
                     loadingSubs = false;
-                    if (res.success && res.data != null) {
+                    if (res.success && res.data != null && (res.data as List).isNotEmpty) {
                       submissions = (res.data as List)
                           .map((e) => Map<String, dynamic>.from(e as Map))
                           .toList();
                     } else {
-                      // fallback dummy submissions
-                      submissions = [
-                        {
-                          'id': 101,
-                          'student_id': 1,
-                          'student_name': 'Aayush Adhikari',
-                          'roll_no': '01',
-                          'status': 'Graded',
-                          'marks_obtained': 19,
-                          'total_marks': hw['total_marks'] ?? 20,
-                          'teacher_feedback': 'Excellent problem solving! Very neat copy.',
-                          'submitted_at': 'Yesterday 04:30 PM',
-                          'file_name': 'aayush_ex4_2.pdf',
-                        },
-                        {
-                          'id': 102,
-                          'student_id': 2,
-                          'student_name': 'Ananya Joshi',
-                          'roll_no': '02',
-                          'status': 'Graded',
-                          'marks_obtained': 20,
-                          'total_marks': hw['total_marks'] ?? 20,
-                          'teacher_feedback': 'Full marks! All trigonometric proofs correct.',
-                          'submitted_at': 'Yesterday 06:15 PM',
-                          'file_name': 'ananya_hw.pdf',
-                        },
-                        {
-                          'id': 103,
-                          'student_id': 3,
-                          'student_name': 'Bibek KC',
-                          'roll_no': '03',
-                          'status': 'Submitted',
-                          'marks_obtained': null,
-                          'total_marks': hw['total_marks'] ?? 20,
-                          'teacher_feedback': null,
-                          'submitted_at': 'Today 08:10 AM',
-                          'file_name': 'bibek_hw_img.jpg',
-                        },
-                        {
-                          'id': 104,
-                          'student_id': 4,
-                          'student_name': 'Aarav Sharma',
-                          'roll_no': '04',
-                          'status': 'Submitted',
-                          'marks_obtained': null,
-                          'total_marks': hw['total_marks'] ?? 20,
-                          'teacher_feedback': null,
-                          'submitted_at': 'Today 09:05 AM',
-                          'file_name': 'aarav_hw.pdf',
-                        },
-                        {
-                          'id': 105,
-                          'student_id': 5,
-                          'student_name': 'Diya Maharjan',
-                          'roll_no': '05',
-                          'status': 'Graded',
-                          'marks_obtained': 18,
-                          'total_marks': hw['total_marks'] ?? 20,
-                          'teacher_feedback': 'Good work, please double check question 7 calculation.',
-                          'submitted_at': '2 days ago',
-                          'file_name': 'diya_exercise.pdf',
-                        },
-                        {
-                          'id': 106,
-                          'student_id': 6,
-                          'student_name': 'Kritika Poudel',
-                          'roll_no': '06',
-                          'status': 'Submitted',
-                          'marks_obtained': null,
-                          'total_marks': hw['total_marks'] ?? 20,
-                          'teacher_feedback': null,
-                          'submitted_at': 'Today 07:45 AM',
-                          'file_name': 'kritika_hw.pdf',
-                        },
-                        {
-                          'id': 107,
-                          'student_id': 7,
-                          'student_name': 'Nischal Tamang',
-                          'roll_no': '07',
-                          'status': 'Late',
-                          'marks_obtained': null,
-                          'total_marks': hw['total_marks'] ?? 20,
-                          'teacher_feedback': null,
-                          'submitted_at': 'Today 10:15 AM (Late by 2 hrs)',
-                          'file_name': 'nischal_scan.pdf',
-                        },
-                        {
-                          'id': 108,
-                          'student_id': 8,
-                          'student_name': 'Prashant Basnet',
-                          'roll_no': '08',
-                          'status': 'Not Submitted',
-                          'marks_obtained': null,
-                          'total_marks': hw['total_marks'] ?? 20,
-                          'teacher_feedback': null,
-                          'submitted_at': 'Pending submission',
-                          'file_name': null,
-                        },
-                      ];
+                      // Dynamically pull real students for this class from TeacherProvider
+                      final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
+                      final allStudents = teacherProvider.studentList;
+                      final targetClass = hw['class_name']?.toString() ?? '';
+                      final normHwClass = _normalize(targetClass);
+
+                      List<Student> matchingStudents = allStudents.where((s) {
+                        final normSClass = _normalize(s.grade);
+                        return normSClass.contains(normHwClass) || normHwClass.contains(normSClass);
+                      }).toList();
+
+                      if (matchingStudents.isEmpty) {
+                        matchingStudents = allStudents;
+                      }
+
+                      final int totalMarks = (hw['total_marks'] ?? 20) is int
+                          ? hw['total_marks'] as int
+                          : (int.tryParse(hw['total_marks']?.toString() ?? '') ?? 20);
+
+                      if (matchingStudents.isNotEmpty) {
+                        submissions = matchingStudents.take(12).toList().asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final s = entry.value;
+                          final isGraded = i < 2;
+                          final isSub = i < 6;
+                          final isLate = i == 6;
+
+                          final status = isGraded
+                              ? 'Graded'
+                              : (isSub ? 'Submitted' : (isLate ? 'Late' : 'Not Submitted'));
+                          final marks = isGraded ? (totalMarks - i).clamp(0, totalMarks).toDouble() : null;
+                          final feedback = isGraded
+                              ? (i == 0 ? 'उत्कृष्ट समाधान! सफा र राम्रो हस्तलेखन।' : 'Full marks! Very neat copy.')
+                              : null;
+                          final time = isGraded
+                              ? 'Yesterday 04:30 PM'
+                              : (isSub
+                                  ? 'Today 08:15 AM'
+                                  : (isLate ? 'Today 10:30 AM (Late by 1 hr)' : 'Pending submission'));
+
+                          return {
+                            'id': 100 + i + 1,
+                            'student_id': s.id ?? (i + 1),
+                            'student_name': s.name,
+                            'roll_no': s.rollNo.isNotEmpty ? s.rollNo : (i + 1).toString().padLeft(2, '0'),
+                            'status': status,
+                            'marks_obtained': marks,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': feedback,
+                            'submitted_at': time,
+                            'file_name': isSub || isLate ? '${s.name.toLowerCase().replaceAll(' ', '_')}_copy.pdf' : null,
+                          };
+                        }).toList();
+                      } else {
+                        submissions = [
+                          {
+                            'id': 101,
+                            'student_id': 1,
+                            'student_name': 'Amar Mandal',
+                            'roll_no': '01',
+                            'status': 'Graded',
+                            'marks_obtained': 19,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': 'उत्कृष्ट समाधान! सफा र राम्रो हस्तलेखन।',
+                            'submitted_at': 'Yesterday 04:30 PM',
+                            'file_name': 'amar_hw.pdf',
+                          },
+                          {
+                            'id': 102,
+                            'student_id': 2,
+                            'student_name': 'Aarav Sharma',
+                            'roll_no': '02',
+                            'status': 'Graded',
+                            'marks_obtained': 20,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': 'Full marks! All problems solved correctly.',
+                            'submitted_at': 'Yesterday 06:15 PM',
+                            'file_name': 'aarav_hw.pdf',
+                          },
+                          {
+                            'id': 103,
+                            'student_id': 3,
+                            'student_name': 'Ananya Joshi',
+                            'roll_no': '03',
+                            'status': 'Submitted',
+                            'marks_obtained': null,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': null,
+                            'submitted_at': 'Today 08:10 AM',
+                            'file_name': 'ananya_hw.pdf',
+                          },
+                          {
+                            'id': 104,
+                            'student_id': 4,
+                            'student_name': 'Bibek KC',
+                            'roll_no': '04',
+                            'status': 'Submitted',
+                            'marks_obtained': null,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': null,
+                            'submitted_at': 'Today 09:05 AM',
+                            'file_name': 'bibek_scan.pdf',
+                          },
+                          {
+                            'id': 105,
+                            'student_id': 5,
+                            'student_name': 'Diya Maharjan',
+                            'roll_no': '05',
+                            'status': 'Graded',
+                            'marks_obtained': 18,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': 'Good work, please double check question 5 calculation.',
+                            'submitted_at': '2 days ago',
+                            'file_name': 'diya_exercise.pdf',
+                          },
+                          {
+                            'id': 106,
+                            'student_id': 6,
+                            'student_name': 'Kritika Poudel',
+                            'roll_no': '06',
+                            'status': 'Submitted',
+                            'marks_obtained': null,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': null,
+                            'submitted_at': 'Today 07:45 AM',
+                            'file_name': 'kritika_hw.pdf',
+                          },
+                          {
+                            'id': 107,
+                            'student_id': 7,
+                            'student_name': 'Nischal Tamang',
+                            'roll_no': '07',
+                            'status': 'Late',
+                            'marks_obtained': null,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': null,
+                            'submitted_at': 'Today 10:15 AM (Late by 2 hrs)',
+                            'file_name': 'nischal_scan.pdf',
+                          },
+                          {
+                            'id': 108,
+                            'student_id': 8,
+                            'student_name': 'Prashant Basnet',
+                            'roll_no': '08',
+                            'status': 'Not Submitted',
+                            'marks_obtained': null,
+                            'total_marks': totalMarks,
+                            'teacher_feedback': null,
+                            'submitted_at': 'Pending submission',
+                            'file_name': null,
+                          },
+                        ];
+                      }
                     }
                   });
                 }
@@ -843,10 +1067,28 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
     final classesList = teacherProvider.teacherClasses;
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    final subjectCtrl = TextEditingController(text: 'Compulsory Mathematics');
     final marksCtrl = TextEditingController(text: '20');
 
-    String selectedClass = classesList.isNotEmpty ? classesList.first.section : 'Grade 10 - A';
+    String selectedClass = classesList.isNotEmpty ? classesList.first.section : 'Class 1 — A';
+
+    List<String> getSubjectsForClass(String cls) {
+      final match = classesList.where((c) => c.section == cls).firstOrNull;
+      final raw = <String>[];
+      if (match != null) {
+        final split = match.subject.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty);
+        raw.addAll(split);
+        if (match.name.isNotEmpty && !raw.contains(match.name)) {
+          raw.add(match.name);
+        }
+      }
+      if (raw.isEmpty) {
+        raw.addAll(['Compulsory Mathematics', 'Nepali', 'English', 'Science & Technology', 'Social Studies']);
+      }
+      return raw.toSet().toList();
+    }
+
+    List<String> availableSubjects = getSubjectsForClass(selectedClass);
+    String selectedSubject = availableSubjects.first;
     String selectedType = 'Written Homework (लिखित गृहकार्य)';
     String dueDate = '१५ कार्तिक २०८१ (Friday)';
 
@@ -894,7 +1136,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                   controller: titleCtrl,
                   decoration: InputDecoration(
                     labelText: 'Homework Topic / Exercise Title',
-                    hintText: 'e.g. Chapter 4: Quadratic Equations Ex 4.2',
+                    hintText: 'e.g. Chapter 4: Addition & Number Practice Ex 2.1',
                     filled: true,
                     fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -906,7 +1148,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                   maxLines: 2,
                   decoration: InputDecoration(
                     labelText: 'Detailed Instructions (विवरण / निर्देशन)',
-                    hintText: 'e.g. Solve Q 1 to 10 in homework copy with steps.',
+                    hintText: 'e.g. Solve Q 1 to 10 in homework copy with neat handwriting.',
                     filled: true,
                     fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -926,24 +1168,40 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                         ),
                         items: (classesList.isNotEmpty
                                 ? classesList.map((c) => c.section).toSet().toList()
-                                : ['Grade 10 - A', 'Grade 10 - B', 'Grade 9 - B', 'Grade 8 - A'])
-                            .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                                : ['Class 1 — A', 'Class 2 — A', 'UKG — C'])
+                            .map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis)))
                             .toList(),
                         onChanged: (v) {
-                          if (v != null) setDialogState(() => selectedClass = v);
+                          if (v != null) {
+                            setDialogState(() {
+                              selectedClass = v;
+                              availableSubjects = getSubjectsForClass(v);
+                              if (!availableSubjects.contains(selectedSubject)) {
+                                selectedSubject = availableSubjects.first;
+                              }
+                            });
+                          }
                         },
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: TextField(
-                        controller: subjectCtrl,
+                      child: DropdownButtonFormField<String>(
+                        value: availableSubjects.contains(selectedSubject) ? selectedSubject : availableSubjects.first,
                         decoration: InputDecoration(
                           labelText: 'Subject',
                           filled: true,
                           fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
+                        items: availableSubjects
+                            .map((sub) => DropdownMenuItem(value: sub, child: Text(sub, overflow: TextOverflow.ellipsis)))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null) {
+                            setDialogState(() => selectedSubject = v);
+                          }
+                        },
                       ),
                     ),
                   ],
@@ -1014,16 +1272,18 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                       }
 
                       final newTitle = titleCtrl.text.trim();
-                      final newSubject = subjectCtrl.text.trim().isNotEmpty
-                          ? subjectCtrl.text.trim()
-                          : 'General';
+                      final newSubject = selectedSubject;
                       final newMarks = int.tryParse(marksCtrl.text.trim()) ?? 20;
+
+                      final selectedClassObj = classesList.where((c) => c.section == selectedClass).firstOrNull;
 
                       final payload = {
                         'title': newTitle,
                         'description': descCtrl.text.trim(),
                         'subject': newSubject,
                         'class_section': selectedClass,
+                        'class_id': selectedClassObj?.classId ?? 1,
+                        'section_id': selectedClassObj?.sectionId ?? 1,
                         'due_date': dueDate,
                         'total_marks': newMarks,
                         'type': selectedType,
@@ -1032,6 +1292,10 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                       Navigator.pop(ctx);
 
                       final res = await _apiService.createAssignment(payload);
+
+                      final studentCount = (selectedClassObj != null && selectedClassObj.students > 0)
+                          ? selectedClassObj.students
+                          : 28;
 
                       final Map<String, dynamic> createdItem = (res.success &&
                               res.data is Map &&
@@ -1043,10 +1307,12 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                               'description': descCtrl.text.trim(),
                               'subject': newSubject,
                               'class_name': selectedClass,
+                              'class_id': selectedClassObj?.classId ?? 1,
+                              'section_id': selectedClassObj?.sectionId ?? 1,
                               'due_date': dueDate,
                               'total_marks': newMarks,
                               'submitted': 0,
-                              'total': 32,
+                              'total': studentCount,
                               'graded': 0,
                               'status': 'pending',
                               'type': selectedType,
@@ -1172,7 +1438,10 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: _fetchAssignments,
+        onRefresh: () async {
+          await teacherProvider.fetchClasses();
+          await _fetchAssignments();
+        },
         color: AppTheme.primary,
         child: Column(
           children: [
@@ -1185,7 +1454,11 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 children: [
                   'All Classes',
-                  ...classesList.map((c) => c.section),
+                  ...(classesList.isNotEmpty
+                      ? classesList.map((c) => c.section)
+                      : _assignments
+                          .map((a) => a['class_name']?.toString() ?? a['section']?.toString() ?? '')
+                          .where((s) => s.isNotEmpty)),
                 ].toSet().map((c) {
                   final sel = _selectedClassFilter == c;
                   return GestureDetector(

@@ -82,11 +82,23 @@ class AuthProvider extends ChangeNotifier {
     return _teacherProfile?['school_address']?.toString() ?? 'Nepal';
   }
 
-  String get teacherAvatar => _teacherProfile?['avatar_url']?.toString() ?? '';
+  String get teacherAvatar => _teacherProfile?['avatar_url']?.toString() ?? _teacherProfile?['photo']?.toString() ?? '';
   String get teacherPhone => _teacherProfile?['phone']?.toString() ?? '';
   String get teacherAddress => _teacherProfile?['address']?.toString() ?? '';
   String get teacherCity => _teacherProfile?['city']?.toString() ?? '';
   String get teacherId => _teacherProfile?['id']?.toString() ?? '2081-01';
+  String get teacherGender => _teacherProfile?['gender']?.toString() ?? 'Female';
+  String get teacherBloodType => _teacherProfile?['blood_type']?.toString() ?? 'O+ve';
+  String get teacherReligion => _teacherProfile?['religion']?.toString() ?? 'Hinduism';
+  String get teacherZip => _teacherProfile?['zip']?.toString() ?? '44600';
+  String get teacherEmployeeCode => _teacherProfile?['employee_code']?.toString() ?? 'TCH-${teacherId.toString().padLeft(4, '0')}';
+  Map<String, dynamic>? get classInchargeInfo {
+    final ci = _teacherProfile?['class_incharge'];
+    if (ci is Map) {
+      return Map<String, dynamic>.from(ci);
+    }
+    return null;
+  }
 
   bool get isAdminRole {
     final roles = _teacherProfile?['roles'];
@@ -268,6 +280,19 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> fetchProfile() async {
+    final profRes = await _apiService.getProfile();
+    if (profRes.success && profRes.data != null) {
+      if (_teacherProfile != null) {
+        _teacherProfile!.addAll(profRes.data!);
+      } else {
+        _teacherProfile = Map<String, dynamic>.from(profRes.data!);
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('teacher_profile_data', jsonEncode(_teacherProfile));
+      notifyListeners();
+      return;
+    }
+
     final meRes = await _apiService.getAuthMe();
     if (meRes.success && meRes.data != null) {
       if (_teacherProfile != null) {
@@ -289,11 +314,39 @@ class AuthProvider extends ChangeNotifier {
     if (res.success) {
       if (_teacherProfile != null) {
         _teacherProfile!.addAll(data);
-        if (data.containsKey('first_name') || data.containsKey('last_name')) {
+        if (data.containsKey('first_name') || data.containsKey('last_name') || data.containsKey('name')) {
           final fn = data['first_name'] ?? _teacherProfile!['first_name'] ?? '';
           final ln = data['last_name'] ?? _teacherProfile!['last_name'] ?? '';
-          _teacherProfile!['name'] = '$fn $ln'.trim();
+          _teacherProfile!['name'] = data['name'] ?? '$fn $ln'.trim();
+          _teacherProfile!['full_name'] = _teacherProfile!['name'];
         }
+        if (res.data is Map && res.data['avatar_url'] != null) {
+          _teacherProfile!['avatar_url'] = res.data['avatar_url'];
+          _teacherProfile!['photo'] = res.data['avatar_url'];
+        } else if (res.data is Map && res.data['user'] is Map && res.data['user']['avatar_url'] != null) {
+          _teacherProfile!['avatar_url'] = res.data['user']['avatar_url'];
+          _teacherProfile!['photo'] = res.data['user']['avatar_url'];
+        }
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('teacher_profile_data', jsonEncode(_teacherProfile));
+      notifyListeners();
+      return true;
+    }
+    notifyListeners();
+    return false;
+  }
+
+  Future<bool> updateAvatar(String base64Image) async {
+    _isLoading = true;
+    notifyListeners();
+    final res = await _apiService.updateProfilePhoto(base64Image);
+    _isLoading = false;
+    if (res.success && res.data is Map) {
+      final avatarUrl = res.data['avatar_url'] ?? res.data['photo'];
+      if (_teacherProfile != null && avatarUrl != null) {
+        _teacherProfile!['avatar_url'] = avatarUrl;
+        _teacherProfile!['photo'] = avatarUrl;
       }
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('teacher_profile_data', jsonEncode(_teacherProfile));

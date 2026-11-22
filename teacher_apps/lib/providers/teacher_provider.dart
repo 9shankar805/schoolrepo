@@ -134,10 +134,45 @@ class TeacherProvider extends ChangeNotifier {
     return AppData.exams;
   }
 
-  int get classesCount => (_stats['total_classes'] ?? _stats['classes_count'] ?? (_classes.isNotEmpty ? _classes.length : 0)) as int? ?? (_classes.isNotEmpty ? _classes.length : 0);
-  int get studentsCount => (_stats['total_students'] ?? _stats['students_count'] ?? (_students.isNotEmpty ? _students.length : 0)) as int? ?? (_students.isNotEmpty ? _students.length : 0);
-  int get pendingAssignmentsCount => (_stats['pending_assignments'] ?? _assignments.length) as int? ?? _assignments.length;
-  int get unreadMessagesCount => (_stats['unread_messages'] ?? 0) as int? ?? 0;
+  int get classesCount {
+    final val = _stats['total_classes'] ?? _stats['classes_count'];
+    if (val is int) return val;
+    if (val != null) {
+      final p = int.tryParse(val.toString());
+      if (p != null) return p;
+    }
+    return _classes.isNotEmpty ? _classes.length : 0;
+  }
+
+  int get studentsCount {
+    final val = _stats['total_students'] ?? _stats['students_count'];
+    if (val is int) return val;
+    if (val != null) {
+      final p = int.tryParse(val.toString());
+      if (p != null) return p;
+    }
+    return _students.isNotEmpty ? _students.length : 0;
+  }
+
+  int get pendingAssignmentsCount {
+    final val = _stats['pending_assignments'];
+    if (val is int) return val;
+    if (val != null) {
+      final p = int.tryParse(val.toString());
+      if (p != null) return p;
+    }
+    return _assignments.length;
+  }
+
+  int get unreadMessagesCount {
+    final val = _stats['unread_messages'];
+    if (val is int) return val;
+    if (val != null) {
+      final p = int.tryParse(val.toString());
+      if (p != null) return p;
+    }
+    return 0;
+  }
 
   Future<void> refreshAll() async {
     _loading = true;
@@ -253,6 +288,17 @@ class TeacherProvider extends ChangeNotifier {
       }
     } catch (_) {}
     notifyListeners();
+  }
+
+  Future<bool> publishAnnouncement(Map<String, dynamic> data) async {
+    try {
+      final res = await _apiService.createAnnouncement(data);
+      if (res.success) {
+        await fetchAnnouncements();
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   Future<void> fetchTodos() async {

@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import '../providers/auth_provider.dart';
@@ -38,6 +40,173 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _biometricEnabled = prefs.getBool('biometric_login_enabled') ?? true;
       });
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto(BuildContext context, AuthProvider authProvider) async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.18),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset('assets/icons/3d/camera.png', width: 28, height: 28),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Profile Photo (अटो WebP रूपान्तरण)',
+                    style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome, color: AppTheme.primary, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'Auto-converts to WebP (.webp) • High Quality, Small Size',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.primary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEFF6FF),
+                        foregroundColor: AppTheme.primary,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: Color(0xFFBFDBFE)),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await _processImagePick(ImageSource.camera, authProvider);
+                      },
+                      icon: const Icon(Icons.camera_alt_rounded),
+                      label: const Text('Camera\n(क्यामेरा)', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF0FDF4),
+                        foregroundColor: AppTheme.green,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: Color(0xFFBBF7D0)),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await _processImagePick(ImageSource.gallery, authProvider);
+                      },
+                      icon: const Icon(Icons.photo_library_rounded),
+                      label: const Text('Gallery\n(ग्यालरी)', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processImagePick(ImageSource source, AuthProvider authProvider) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (pickedFile == null) return;
+
+      setState(() => _isSyncing = true);
+      final bytes = await pickedFile.readAsBytes();
+      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+
+      final success = await authProvider.updateAvatar(base64Image);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: success ? AppTheme.green : AppTheme.orange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    success
+                        ? 'Profile photo auto-converted to .webp and saved successfully!'
+                        : 'Profile photo updated locally.',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.red,
+            content: Text('Failed to update photo: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
     }
   }
 
@@ -163,28 +332,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final school = authProvider.schoolName.isNotEmpty
         ? authProvider.schoolName
         : 'Nepal School Hub (NSHLMS)';
-    final initials = name
-        .split(' ')
-        .where((e) => e.isNotEmpty)
-        .map((e) => e[0])
-        .take(2)
-        .join();
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
       appBar: AppBar(
-        title: const Text('My Profile (मेरो प्रोफाइल)'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/icons/3d/nav_profile.png', width: 26, height: 26, fit: BoxFit.contain),
+            const SizedBox(width: 8),
+            const Text('My Profile (मेरो प्रोफाइल)'),
+          ],
+        ),
         automaticallyImplyLeading: false,
         actions: [
-          // Cloud Sync Button
+          // Cloud Sync Button with 3D Rocket icon
           IconButton(
             icon: _isSyncing
                 ? const SizedBox(
-                    width: 18,
-                    height: 18,
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
                   )
-                : const Icon(Icons.sync_rounded, color: AppTheme.primary),
+                : Image.asset('assets/icons/3d/rocket.png', width: 22, height: 22, fit: BoxFit.contain),
             tooltip: 'Sync with Nepal School Hub MIS',
             onPressed: _isSyncing
                 ? null
@@ -345,72 +515,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Avatar & Name Row
                     Row(
                       children: [
-                        Stack(
-                          alignment: Alignment.bottomRight,
-                          children: [
-                            Container(
-                              width: 68,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF38BDF8), Color(0xFF818CF8)],
-                                ),
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
+                        // Interactive Avatar with Camera Upload (Auto WebP)
+                        GestureDetector(
+                          onTap: () => _pickAndUploadPhoto(context, authProvider),
+                          child: Stack(
+                            alignment: Alignment.bottomRight,
+                            children: [
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF38BDF8), Color(0xFF818CF8)],
                                   ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  initials.isNotEmpty ? initials : 'GT',
-                                  style: const TextStyle(
+                                  border: Border.all(
                                     color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w900,
+                                    width: 2.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.25),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: authProvider.teacherAvatar.isNotEmpty
+                                    ? (authProvider.teacherAvatar.startsWith('http')
+                                        ? CachedNetworkImage(
+                                            imageUrl: authProvider.teacherAvatar,
+                                            fit: BoxFit.cover,
+                                            placeholder: (_, __) => const Center(
+                                              child: SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                              ),
+                                            ),
+                                            errorWidget: (_, __, ___) => Image.asset(
+                                              'assets/images/illustrations/teacher_profile.png',
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF0F4C81)),
+                                            ),
+                                          )
+                                        : Image.asset(
+                                            authProvider.teacherAvatar,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Image.asset(
+                                              'assets/images/illustrations/teacher_profile.png',
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF0F4C81)),
+                                            ),
+                                          ))
+                                    : Image.asset(
+                                        'assets/images/illustrations/teacher_profile.png',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(color: const Color(0xFF0F4C81)),
+                                      ),
+                              ),
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.25),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.camera_alt_rounded,
+                                    size: 13,
+                                    color: AppTheme.primary,
                                   ),
                                 ),
                               ),
-                            ),
-                            Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                color: AppTheme.green,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFF0F4C81),
-                                  width: 2,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.check,
-                                size: 13,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.2,
-                                ),
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.2,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withOpacity(0.9),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'WebP ⚡',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 3),
                               Text(
@@ -456,7 +681,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              'ID: TCH-${authProvider.teacherId}',
+                              'ID: ${authProvider.teacherEmployeeCode}',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.9),
                                 fontSize: 11.5,
@@ -488,10 +713,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-            ).animate().fadeIn().slideY(begin: 0.1, end: 0),
+            ),
             const SizedBox(height: 16),
 
-            // 5 Key Stats Row
+            // 5 Key Stats Row with 3D Icons
             Container(
               padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
               decoration: BoxDecoration(
@@ -512,11 +737,414 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _StatBox(label: 'Classes', value: '${teacherProvider.classesCount}', icon: Icons.class_rounded, color: AppTheme.primary),
-                  _StatBox(label: 'Students', value: '${teacherProvider.studentsCount}', icon: Icons.groups_rounded, color: AppTheme.purple),
-                  _StatBox(label: 'Haziri', value: '${teacherProvider.stats['average_attendance'] ?? '96%'}', icon: Icons.how_to_reg_rounded, color: AppTheme.green),
-                  _StatBox(label: 'Courses', value: '${teacherProvider.teacherClasses.length}', icon: Icons.history_edu_rounded, color: AppTheme.orange),
-                  _StatBox(label: 'Rating', value: '4.9 ⭐', icon: Icons.star_rounded, color: const Color(0xFFF59E0B)),
+                  _StatBox(label: 'Classes', value: '${teacherProvider.classesCount}', icon: Icons.class_rounded, imageIcon3d: 'assets/icons/3d/my_classes.png', color: AppTheme.primary),
+                  _StatBox(label: 'Students', value: '${teacherProvider.studentsCount}', icon: Icons.groups_rounded, imageIcon3d: 'assets/icons/3d/student_info.png', color: AppTheme.purple),
+                  _StatBox(label: 'Haziri', value: '${teacherProvider.stats['average_attendance'] ?? '96%'}', icon: Icons.how_to_reg_rounded, imageIcon3d: 'assets/icons/3d/fluent_clipboard.png', color: AppTheme.green),
+                  _StatBox(label: 'Courses', value: '${teacherProvider.teacherClasses.length}', icon: Icons.history_edu_rounded, imageIcon3d: 'assets/icons/3d/fluent_books.png', color: AppTheme.orange),
+                  _StatBox(label: 'Rating', value: '4.9 ⭐', icon: Icons.star_rounded, imageIcon3d: 'assets/icons/3d/medal.png', color: const Color(0xFFF59E0B)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ==========================================
+            // TEACHER FULL PROFILE DETAILS (शिक्षकको पूर्ण विवरण)
+            // ==========================================
+            SectionHeader(
+              title: 'Teacher Profile Details (पूर्ण विवरण)',
+              subtitle: 'Official faculty record from Nepal School Hub MIS',
+              trailing: GestureDetector(
+                onTap: () => _showEditProfileDialog(context, authProvider, isDark),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_note_rounded, size: 16, color: AppTheme.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Edit',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Card 1: Personal & Demographics (Pastel Clay)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkCardBorder : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withOpacity(isDark ? 0.2 : 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Image.asset('assets/icons/3d/nav_profile.png', width: 24, height: 24),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Personal & Identity Record',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                            ),
+                            Text(
+                              'Demographic data verified with NEB',
+                              style: TextStyle(fontSize: 11, color: AppTheme.darkSubtext),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          authProvider.teacherEmployeeCode,
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF475569)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  _buildDetailRow('Full Name (नाम):', name, isBold: true),
+                  _buildDetailRow('Gender (लिङ्ग):', authProvider.teacherGender),
+                  _buildDetailRow(
+                    'Blood Group (रक्त समूह):',
+                    authProvider.teacherBloodType,
+                    badgeColor: const Color(0xFFFEE2E2),
+                    badgeTextColor: const Color(0xFFDC2626),
+                  ),
+                  _buildDetailRow('Religion (धर्म):', authProvider.teacherReligion),
+                  _buildDetailRow('Teacher ID (आईडी):', 'TCH-${authProvider.teacherId}'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Card 2: Contact & Location (Pastel Emerald)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkCardBorder : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withOpacity(isDark ? 0.2 : 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Image.asset('assets/icons/3d/map_pin.png', width: 24, height: 24),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Contact & Residence (सम्पर्क र ठेगाना)',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                            ),
+                            Text(
+                              'Phone, WhatsApp & Official Address',
+                              style: TextStyle(fontSize: 11, color: AppTheme.darkSubtext),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  // Phone Row with Quick Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Mobile Phone (+977):', style: TextStyle(fontSize: 11, color: AppTheme.darkSubtext)),
+                          const SizedBox(height: 2),
+                          Text(
+                            authProvider.teacherPhone.isNotEmpty ? authProvider.teacherPhone : '9841200006',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => _makePhoneCall(authProvider.teacherPhone.isNotEmpty ? authProvider.teacherPhone : '9841200006'),
+                            icon: const Icon(Icons.phone_in_talk_rounded, size: 18, color: AppTheme.green),
+                            tooltip: 'Direct Call',
+                            style: IconButton.styleFrom(backgroundColor: const Color(0xFFDCFCE7), padding: const EdgeInsets.all(8)),
+                          ),
+                          const SizedBox(width: 6),
+                          IconButton(
+                            onPressed: () => _openWhatsApp(authProvider.teacherPhone.isNotEmpty ? authProvider.teacherPhone : '9841200006', 'Namaste Guru!'),
+                            icon: const Icon(Icons.chat_bubble_rounded, size: 18, color: Color(0xFF10B981)),
+                            tooltip: 'WhatsApp Message',
+                            style: IconButton.styleFrom(backgroundColor: const Color(0xFFD1FAE5), padding: const EdgeInsets.all(8)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Email Row with Send Email Button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Official Email (इमेल):', style: TextStyle(fontSize: 11, color: AppTheme.darkSubtext)),
+                            const SizedBox(height: 2),
+                            Text(
+                              email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _sendEmail(email, 'Faculty Academic Communication'),
+                        icon: const Icon(Icons.mail_outline_rounded, size: 18, color: AppTheme.primary),
+                        tooltip: 'Send Email',
+                        style: IconButton.styleFrom(backgroundColor: const Color(0xFFEFF6FF), padding: const EdgeInsets.all(8)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _buildDetailRow('Current Address (ठेगाना):', authProvider.teacherAddress.isNotEmpty ? authProvider.teacherAddress : 'Siraha-1'),
+                  _buildDetailRow('City / District (सहर/जिल्ला):', authProvider.teacherCity.isNotEmpty ? authProvider.teacherCity : 'Siraha'),
+                  _buildDetailRow('Postal / ZIP Code:', authProvider.teacherZip),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Card 3: Academic & Authority (Pastel Purple/Amber)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkCardBorder : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withOpacity(isDark ? 0.2 : 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAF5FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Image.asset('assets/icons/3d/crown.png', width: 24, height: 24),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Academic Status & Faculty Duties',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                            ),
+                            Text(
+                              'Designation, Class Incharge & Roles',
+                              style: TextStyle(fontSize: 11, color: AppTheme.darkSubtext),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  _buildDetailRow('Faculty Designation:', designation, isBold: true),
+                  _buildDetailRow(
+                    'Class In-charge:',
+                    authProvider.classInchargeInfo != null
+                        ? '${authProvider.classInchargeInfo!['class_name']} - ${authProvider.classInchargeInfo!['section_name']}'
+                        : 'Class 1 - A (Room 101)',
+                    badgeColor: const Color(0xFFFEF3C7),
+                    badgeTextColor: const Color(0xFFD97706),
+                  ),
+                  _buildDetailRow('School Affiliation:', school),
+                  _buildDetailRow('Campus Location:', authProvider.schoolAddress),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _buildChip('Senior Faculty', const Color(0xFFEFF6FF), AppTheme.primary),
+                      _buildChip('Class Teacher In-Charge', const Color(0xFFFEF3C7), const Color(0xFFB45309)),
+                      _buildChip('Attendance Lead', const Color(0xFFDCFCE7), AppTheme.green),
+                      _buildChip('Exam Moderator', const Color(0xFFFAF5FF), AppTheme.purple),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Card 4: WebP Smart Photo Optimizer Banner
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE0F2FE), Color(0xFFF0FDF4)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFBAE6FD)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6),
+                      ],
+                    ),
+                    child: Center(
+                      child: Image.asset('assets/icons/3d/camera.png', width: 28, height: 28),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Auto WebP Conversion',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0F4C81),
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            Icon(Icons.auto_awesome, size: 14, color: AppTheme.primary),
+                          ],
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Photos uploaded are auto-converted to .webp on the server for ultra-fast loading.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF334155), height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => _pickAndUploadPhoto(context, authProvider),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.upload_rounded, size: 15),
+                        SizedBox(width: 4),
+                        Text('Photo', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -535,12 +1163,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Leave Balance',
                     subtitle: '14 Days Available',
                     icon: Icons.event_available_rounded,
+                    imageIcon3d: 'assets/icons/3d/student_leave.png',
                     color: AppTheme.purple,
                     isDark: isDark,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const LeaveApplicationScreen()),
                     ),
+                    onLongPress: () => _showLeaveBalanceDialog(context, authProvider, isDark),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -549,12 +1179,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Salary & Payslip',
                     subtitle: 'रु. ५८,५०० (Ashwin)',
                     icon: Icons.receipt_long_rounded,
+                    imageIcon3d: 'assets/icons/3d/wallet.png',
                     color: AppTheme.green,
                     isDark: isDark,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const PayslipScreen()),
                     ),
+                    onLongPress: () => _showSalaryDialog(context, authProvider, isDark),
                   ),
                 ),
               ],
@@ -567,6 +1199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Academic Calendar',
                     subtitle: '२०८१ B.S. Holidays',
                     icon: Icons.calendar_month_rounded,
+                    imageIcon3d: 'assets/icons/3d/calendar.png',
                     color: AppTheme.primary,
                     isDark: isDark,
                     onTap: () => _showCalendarDialog(context, isDark),
@@ -578,6 +1211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Syllabus Tracker',
                     subtitle: '78% Course Finished',
                     icon: Icons.pie_chart_outline_rounded,
+                    imageIcon3d: 'assets/icons/3d/target.png',
                     color: AppTheme.orange,
                     isDark: isDark,
                     onTap: () => _showSyllabusDialog(context, isDark),
@@ -598,19 +1232,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   _SettingsTile(
-                    icon: Icons.person_outline_rounded,
+                    imageIcon3d: 'assets/icons/3d/nav_profile.png',
+                    color: AppTheme.primary,
                     label: 'Edit Teacher Profile',
                     subtitle: 'Name, Phone, Address, City credentials',
                     onTap: () => _showEditProfileDialog(context, authProvider, isDark),
                   ),
                   _SettingsTile(
-                    icon: Icons.lock_outline_rounded,
+                    imageIcon3d: 'assets/icons/3d/lock.png',
+                    color: AppTheme.orange,
                     label: 'Change Password & Security (पासवर्ड)',
                     subtitle: 'Update login credentials & authentication',
                     onTap: () => _showChangePasswordDialog(context, authProvider, isDark),
                   ),
                   _SettingsTile(
-                    icon: Icons.fingerprint_rounded,
+                    imageIcon3d: 'assets/icons/3d/target.png',
+                    color: AppTheme.purple,
                     label: 'Biometric Login (बायोमेट्रिक)',
                     subtitle: _biometricEnabled
                         ? 'Enabled • Fingerprint & Face ID active'
@@ -624,14 +1261,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTap: () => _toggleBiometric(!_biometricEnabled),
                   ),
                   _SettingsTile(
-                    icon: Icons.timer_outlined,
+                    imageIcon3d: 'assets/icons/3d/clock.png',
+                    color: const Color(0xFF0284C7),
                     label: 'Active Session (२४ घण्टे सत्र)',
                     subtitle: 'Auto-logout after 24 hrs for security',
                     value: authProvider.sessionRemainingFormatted,
                     onTap: () => _showSessionInfoDialog(context, authProvider, isDark),
                   ),
                   _SettingsTile(
-                    icon: isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                    imageIcon3d: 'assets/icons/3d/bulb.png',
+                    color: const Color(0xFFEAB308),
                     label: 'Dark Mode (रातीको मोड)',
                     subtitle: isDark ? 'Currently Dark Theme' : 'Currently Light Theme',
                     trailing: Switch(
@@ -643,7 +1282,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTap: () => themeProvider.toggle(),
                   ),
                   _SettingsTile(
-                    icon: Icons.notifications_active_outlined,
+                    imageIcon3d: 'assets/icons/3d/bell.png',
+                    color: const Color(0xFFF97316),
                     label: 'Attendance & Push Alerts',
                     subtitle: 'Get notified for substitute periods',
                     trailing: Switch(
@@ -667,13 +1307,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                   _SettingsTile(
-                    icon: Icons.language_rounded,
+                    imageIcon3d: 'assets/icons/3d/flag.png',
+                    color: const Color(0xFF0D9488),
                     label: 'App Language',
                     value: _selectedLanguage,
                     onTap: () => _showLanguageDialog(context, isDark),
                   ),
                   _SettingsTile(
-                    icon: Icons.sync_rounded,
+                    imageIcon3d: 'assets/icons/3d/rocket.png',
+                    color: AppTheme.primary,
                     label: 'Nepal School Hub Cloud Sync',
                     value: _isSyncing ? 'Syncing...' : 'Online (MIS Sync)',
                     trailing: _isSyncing
@@ -688,15 +1330,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : () => _performCloudSync(context, teacherProvider, authProvider),
                   ),
                   _SettingsTile(
-                    icon: Icons.help_outline_rounded,
+                    imageIcon3d: 'assets/icons/3d/chat_bubble.png',
+                    color: AppTheme.green,
                     label: 'Faculty Helpdesk & Support',
                     subtitle: 'Hotline: 01-5970000 • WhatsApp & Email',
                     onTap: () => _showHelpdeskDialog(context, authProvider, isDark),
                   ),
                   _SettingsTile(
-                    icon: Icons.logout_rounded,
-                    label: 'Sign Out (बाहिर निस्कनुहोस्)',
+                    imageIcon3d: 'assets/icons/3d/fire.png',
                     color: AppTheme.red,
+                    label: 'Sign Out (बाहिर निस्कनुहोस्)',
                     showDivider: false,
                     onTap: () => _showSignOutDialog(context, authProvider),
                   ),
@@ -713,12 +1356,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String subtitle,
     required IconData icon,
+    String? imageIcon3d,
     required Color color,
     required bool isDark,
     required VoidCallback onTap,
+    VoidCallback? onLongPress,
   }) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -749,7 +1395,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: color.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 20),
+                  child: Center(
+                    child: imageIcon3d != null
+                        ? Image.asset(imageIcon3d, width: 22, height: 22, fit: BoxFit.contain)
+                        : Icon(icon, color: color, size: 20),
+                  ),
                 ),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
@@ -777,6 +1427,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  static Widget _buildDetailRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? badgeColor,
+    Color? badgeTextColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.darkSubtext,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 6,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: badgeColor != null
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: badgeColor,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        value,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: badgeTextColor ?? AppTheme.primary,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      value,
+                      textAlign: TextAlign.end,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: isBold ? FontWeight.w900 : FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildChip(String text, Color bg, Color textCol) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: textCol.withOpacity(0.25)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: textCol),
       ),
     );
   }
@@ -816,9 +1543,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Smart Guru Digital Pass 🪪',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  Row(
+                    children: [
+                      Image.asset('assets/icons/3d/crown.png', width: 24, height: 24, fit: BoxFit.contain),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Smart Guru Digital Pass 🪪',
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                      ),
+                    ],
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
@@ -1048,9 +1781,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ---------------------------------------------------------------------------
   void _showEditProfileDialog(BuildContext context, AuthProvider authProvider, bool isDark) {
     final nameCtrl = TextEditingController(text: authProvider.teacherName);
-    final phoneCtrl = TextEditingController(text: authProvider.teacherPhone.isNotEmpty ? authProvider.teacherPhone : '9801234567');
-    final addressCtrl = TextEditingController(text: authProvider.teacherAddress.isNotEmpty ? authProvider.teacherAddress : 'Kathmandu, Lalitpur');
-    final cityCtrl = TextEditingController(text: authProvider.teacherCity.isNotEmpty ? authProvider.teacherCity : 'Kathmandu');
+    final phoneCtrl = TextEditingController(text: authProvider.teacherPhone.isNotEmpty ? authProvider.teacherPhone : '9841200006');
+    final addressCtrl = TextEditingController(text: authProvider.teacherAddress.isNotEmpty ? authProvider.teacherAddress : 'Siraha-1');
+    final cityCtrl = TextEditingController(text: authProvider.teacherCity.isNotEmpty ? authProvider.teacherCity : 'Siraha');
+    String selectedBloodType = authProvider.teacherBloodType.isNotEmpty ? authProvider.teacherBloodType : 'O+ve';
+    String selectedGender = authProvider.teacherGender.isNotEmpty ? authProvider.teacherGender : 'Female';
 
     showModalBottomSheet(
       context: context,
@@ -1059,75 +1794,200 @@ class _ProfileScreenState extends State<ProfileScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 22),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 22),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.edit_note_rounded, color: AppTheme.primary, size: 24),
+                        SizedBox(width: 8),
+                        Text(
+                          'Edit Profile (विवरण सच्याउनुहोस्)',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const Divider(height: 16),
+                const SizedBox(height: 8),
+                _buildFormInput('Full Name (शिक्षकको नाम)', nameCtrl, Icons.person_rounded),
+                const SizedBox(height: 12),
+                _buildFormInput('Mobile Phone (+977)', phoneCtrl, Icons.phone_rounded, keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                _buildFormInput('Current Address (ठेगाना)', addressCtrl, Icons.home_rounded),
+                const SizedBox(height: 12),
+                _buildFormInput('City / District (सहर/जिल्ला)', cityCtrl, Icons.location_city_rounded),
+                const SizedBox(height: 12),
+                // Blood Type & Gender Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Blood Group (रक्त समूह)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: ['A+ve', 'A-ve', 'B+ve', 'B-ve', 'O+ve', 'O-ve', 'AB+ve', 'AB-ve'].contains(selectedBloodType)
+                                    ? selectedBloodType
+                                    : 'O+ve',
+                                items: ['A+ve', 'A-ve', 'B+ve', 'B-ve', 'O+ve', 'O-ve', 'AB+ve', 'AB-ve']
+                                    .map((b) => DropdownMenuItem(value: b, child: Text(b, style: const TextStyle(fontWeight: FontWeight.w700))))
+                                    .toList(),
+                                onChanged: (v) {
+                                  if (v != null) setModalState(() => selectedBloodType = v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Gender (लिङ्ग)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: ['Female', 'Male', 'Other'].contains(selectedGender) ? selectedGender : 'Female',
+                                items: ['Female', 'Male', 'Other']
+                                    .map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontWeight: FontWeight.w700))))
+                                    .toList(),
+                                onChanged: (v) {
+                                  if (v != null) setModalState(() => selectedGender = v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Photo row with WebP auto-conversion notice
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.edit_note_rounded, color: AppTheme.primary, size: 24),
-                      SizedBox(width: 8),
-                      Text(
-                        'Edit Profile (विवरण सच्याउनुहोस्)',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                      Row(
+                        children: [
+                          Image.asset('assets/icons/3d/camera.png', width: 24, height: 24),
+                          const SizedBox(width: 8),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Profile Avatar (फोटो)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: Color(0xFF166534))),
+                              Text('Auto-converted to .webp ✨', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF15803D))),
+                            ],
+                          ),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _pickAndUploadPhoto(context, authProvider);
+                        },
+                        icon: const Icon(Icons.camera_alt_rounded, size: 14),
+                        label: const Text('Change Photo', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.green,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const Divider(height: 16),
-              const SizedBox(height: 8),
-              _buildFormInput('Full Name (शिक्षकको नाम)', nameCtrl, Icons.person_rounded),
-              const SizedBox(height: 12),
-              _buildFormInput('Mobile Phone (+977)', phoneCtrl, Icons.phone_rounded, keyboardType: TextInputType.phone),
-              const SizedBox(height: 12),
-              _buildFormInput('Current Address (ठेगाना)', addressCtrl, Icons.home_rounded),
-              const SizedBox(height: 12),
-              _buildFormInput('City / District (सहर/जिल्ला)', cityCtrl, Icons.location_city_rounded),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    final success = await authProvider.updateProfile({
-                      'name': nameCtrl.text.trim(),
-                      'phone': phoneCtrl.text.trim(),
-                      'address': addressCtrl.text.trim(),
-                      'city': cityCtrl.text.trim(),
-                    });
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: success ? AppTheme.green : AppTheme.orange,
-                          content: Text(success
-                              ? 'Teacher profile saved & updated on Nepal School Hub server!'
-                              : 'Profile updated locally.'),
-                        ),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.save_rounded, size: 18),
-                  label: const Text('Save Profile Changes', style: TextStyle(fontWeight: FontWeight.w800)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final success = await authProvider.updateProfile({
+                        'name': nameCtrl.text.trim(),
+                        'phone': phoneCtrl.text.trim(),
+                        'address': addressCtrl.text.trim(),
+                        'city': cityCtrl.text.trim(),
+                        'blood_type': selectedBloodType,
+                        'gender': selectedGender,
+                      });
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: success ? AppTheme.green : AppTheme.orange,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            content: Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    success
+                                        ? 'Teacher profile saved & updated on Nepal School Hub server!'
+                                        : 'Profile updated locally.',
+                                    style: const TextStyle(fontWeight: FontWeight.w800),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.save_rounded, size: 18),
+                    label: const Text('Save Profile Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F4C81),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1163,11 +2023,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.lock_reset_rounded, color: AppTheme.orange, size: 24),
-                        SizedBox(width: 8),
-                        Text(
+                        Image.asset('assets/icons/3d/lock.png', width: 26, height: 26, fit: BoxFit.contain),
+                        const SizedBox(width: 10),
+                        const Text(
                           'Change Password (पासवर्ड फेर्नुहोस्)',
                           style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900),
                         ),
@@ -1296,12 +2156,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.timer_outlined, color: AppTheme.primary, size: 24),
+              child: Image.asset('assets/icons/3d/clock.png', width: 26, height: 26, fit: BoxFit.contain),
             ),
             const SizedBox(width: 12),
             const Expanded(
@@ -1756,11 +2616,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.calendar_month_rounded, color: AppTheme.primary, size: 24),
-                    SizedBox(width: 10),
-                    Text(
+                    Image.asset('assets/icons/3d/calendar.png', width: 26, height: 26, fit: BoxFit.contain),
+                    const SizedBox(width: 10),
+                    const Text(
                       'Upcoming Holidays २०८१',
                       style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                     ),
@@ -1817,11 +2677,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.pie_chart_outline_rounded, color: AppTheme.orange, size: 24),
-                    SizedBox(width: 10),
-                    Text(
+                    Image.asset('assets/icons/3d/target.png', width: 26, height: 26, fit: BoxFit.contain),
+                    const SizedBox(width: 10),
+                    const Text(
                       'Course Coverage (पाठ्यक्रम प्रगति)',
                       style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                     ),
@@ -1861,14 +2721,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Select App Language (भाषा चयन)',
-              style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900),
+            Row(
+              children: [
+                Image.asset('assets/icons/3d/flag.png', width: 24, height: 24, fit: BoxFit.contain),
+                const SizedBox(width: 8),
+                const Text(
+                  'Select App Language (भाषा चयन)',
+                  style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900),
+                ),
+              ],
             ),
             const SizedBox(height: 14),
             ListTile(
               title: const Text('English (Default)', style: TextStyle(fontWeight: FontWeight.w800)),
-              leading: const Icon(Icons.language_rounded, color: AppTheme.primary),
+              leading: Image.asset('assets/icons/3d/flag.png', width: 22, height: 22),
               trailing: _selectedLanguage.contains('English')
                   ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary)
                   : null,
@@ -1882,7 +2748,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             ListTile(
               title: const Text('नेपाली (Nepali)', style: TextStyle(fontWeight: FontWeight.w800)),
-              leading: const Icon(Icons.translate_rounded, color: AppTheme.orange),
+              leading: Image.asset('assets/icons/3d/chat_text.png', width: 22, height: 22),
               trailing: _selectedLanguage.contains('नेपाली')
                   ? const Icon(Icons.check_circle_rounded, color: AppTheme.orange)
                   : null,
@@ -1919,11 +2785,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.support_agent_rounded, color: AppTheme.primary, size: 24),
-                    SizedBox(width: 10),
-                    Text(
+                    Image.asset('assets/icons/3d/chat_bubble.png', width: 26, height: 26, fit: BoxFit.contain),
+                    const SizedBox(width: 10),
+                    const Text(
                       'Teacher Support & Helpdesk',
                       style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                     ),
@@ -1989,11 +2855,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.logout_rounded, color: AppTheme.red),
-            SizedBox(width: 8),
-            Text(
+            Image.asset('assets/icons/3d/fire.png', width: 26, height: 26, fit: BoxFit.contain),
+            const SizedBox(width: 8),
+            const Text(
               'Sign Out (बाहिर निस्कनुहोस्)',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
             ),
@@ -2102,11 +2968,13 @@ class _QrCodePainter extends CustomPainter {
 class _StatBox extends StatelessWidget {
   final String label, value;
   final IconData icon;
+  final String? imageIcon3d;
   final Color color;
   const _StatBox({
     required this.label,
     required this.value,
     required this.icon,
+    this.imageIcon3d,
     required this.color,
   });
 
@@ -2114,8 +2982,11 @@ class _StatBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(height: 4),
+        if (imageIcon3d != null)
+          Image.asset(imageIcon3d!, width: 22, height: 22, fit: BoxFit.contain)
+        else
+          Icon(icon, color: color, size: 18),
+        const SizedBox(height: 5),
         Text(
           value,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
@@ -2131,7 +3002,7 @@ class _StatBox extends StatelessWidget {
 }
 
 class _SettingsTile extends StatelessWidget {
-  final IconData icon;
+  final String? imageIcon3d;
   final String label;
   final String? subtitle;
   final VoidCallback onTap;
@@ -2141,7 +3012,7 @@ class _SettingsTile extends StatelessWidget {
   final Widget? trailing;
 
   const _SettingsTile({
-    required this.icon,
+    this.imageIcon3d,
     required this.label,
     this.subtitle,
     required this.onTap,
@@ -2158,7 +3029,24 @@ class _SettingsTile extends StatelessWidget {
       children: [
         ListTile(
           onTap: onTap,
-          leading: Icon(icon, color: c, size: 22),
+          leading: Container(
+            width: 38,
+            height: 38,
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: (color ?? AppTheme.primary).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: (color ?? AppTheme.primary).withOpacity(0.18),
+                width: 0.8,
+              ),
+            ),
+            child: Center(
+              child: imageIcon3d != null
+                  ? Image.asset(imageIcon3d!, fit: BoxFit.contain)
+                  : Icon(Icons.circle, color: c, size: 20),
+            ),
+          ),
           title: Text(
             label,
             style: TextStyle(

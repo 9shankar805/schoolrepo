@@ -133,45 +133,70 @@ class _OnboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(children: [
         const SizedBox(height: 16),
         Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  colors: data.gradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight),
-              borderRadius: BorderRadius.circular(40),
-            ),
-            child: Stack(alignment: Alignment.center, children: [
-              Positioned(top: 20, right: 20,
-                child: Container(width: 60, height: 60,
-                    decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        shape: BoxShape.circle))),
-              Positioned(bottom: 30, left: 20,
-                child: Container(width: 40, height: 40,
-                    decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle))),
-              Icon(data.icon, size: 120, color: Colors.white.withOpacity(0.9)),
-            ]),
-          ).animate().scale(duration: 500.ms, curve: Curves.easeOut),
+          child: Center(
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxHeight: 320, maxWidth: 340),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    colors: data.gradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(36),
+                boxShadow: [
+                  BoxShadow(
+                    color: data.gradient.first.withOpacity(0.35),
+                    blurRadius: 28,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
+              ),
+              child: Stack(alignment: Alignment.center, children: [
+                Positioned(top: 20, right: 20,
+                  child: Container(width: 60, height: 60,
+                      decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle))),
+                Positioned(bottom: 30, left: 20,
+                  child: Container(width: 40, height: 40,
+                      decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle))),
+                Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.25),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(data.icon, size: 76, color: Colors.white),
+                  ),
+                ),
+              ]),
+            ).animate().scale(duration: 500.ms, curve: Curves.easeOut),
+          ),
         ),
-        const SizedBox(height: 36),
+        const SizedBox(height: 28),
         Text(data.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800,
-                color: AppTheme.dark, height: 1.2))
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
+                color: AppTheme.dark, height: 1.25))
             .animate().slideY(begin: 0.2, duration: 400.ms).fadeIn(),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         Text(data.subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: AppTheme.grey, height: 1.6))
+            style: const TextStyle(fontSize: 14, color: AppTheme.grey, height: 1.5))
             .animate().fadeIn(duration: 400.ms, delay: 200.ms),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
       ]),
     );
   }

@@ -1632,25 +1632,40 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Haziri Portal (हाजिरी)',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              'Student Attendance',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.darkSubtext,
+            SizedBox(
+              width: 26,
+              height: 26,
+              child: Image.asset(
+                'assets/icons/3d/fluent_clipboard.png',
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(Icons.fact_check_rounded, color: AppTheme.primary, size: 22),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(width: 8),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Haziri Portal (हाजिरी)',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Student Attendance',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.darkSubtext,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ],
         ),
@@ -1678,7 +1693,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             margin: const EdgeInsets.only(right: 14),
             child: ElevatedButton.icon(
               onPressed: () => _showSaveDialog(),
-              icon: const Icon(Icons.cloud_upload_outlined, size: 15),
+              icon: SizedBox(
+                width: 15,
+                height: 15,
+                child: Image.asset(
+                  'assets/icons/3d/rocket.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.cloud_upload_outlined, size: 15),
+                ),
+              ),
               label: const Text(
                 'Submit',
                 style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
@@ -1706,7 +1729,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               backgroundColor: Colors.transparent,
               valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
             ),
-          // Class Horizontal Selector Bar
+          // Class Horizontal Selector Bar with 3D Icons
           Container(
             height: 48,
             margin: const EdgeInsets.only(top: 4),
@@ -1754,10 +1777,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.class_rounded,
-                          size: 14,
-                          color: sel ? Colors.white : AppTheme.darkSubtext,
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: Image.asset(
+                            'assets/icons/3d/my_classes.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.class_rounded,
+                              size: 14,
+                              color: sel ? Colors.white : AppTheme.darkSubtext,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -1812,8 +1843,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.calendar_month_rounded,
-                                  size: 15, color: AppTheme.primary),
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: Image.asset(
+                                  'assets/icons/3d/calendar.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.calendar_month_rounded,
+                                      size: 15, color: AppTheme.primary),
+                                ),
+                              ),
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
@@ -1846,12 +1885,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 4 Status Summary Chips
+                  // 4 Status Summary Chips with 3D Icons
                   Row(
                     children: [
                       _buildSummaryChip(
                           'Present',
                           '$_presentCount',
+                          'assets/icons/3d/thumb_up.png',
                           AppTheme.green,
                           const Color(0xFFECFDF5),
                           isDark),
@@ -1859,6 +1899,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       _buildSummaryChip(
                           'Absent',
                           '$_absentCount',
+                          'assets/icons/3d/student_leave.png',
                           AppTheme.red,
                           const Color(0xFFFEF2F2),
                           isDark),
@@ -1866,6 +1907,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       _buildSummaryChip(
                           'Late',
                           '$_lateCount',
+                          'assets/icons/3d/clock.png',
                           AppTheme.orange,
                           const Color(0xFFFFFBEB),
                           isDark),
@@ -1873,6 +1915,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       _buildSummaryChip(
                           'Leave',
                           '$_leaveCount',
+                          'assets/icons/3d/calendar.png',
                           AppTheme.purple,
                           const Color(0xFFF5F3FF),
                           isDark),
@@ -1880,16 +1923,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Fast Actions (Speed Call, Mark All Present & Reset)
+                  // Fast Actions (Speed Call with 3D flash, Mark All Present with 3D clipboard & Reset)
                   Row(
                     children: [
                       Expanded(
                         flex: 6,
                         child: ElevatedButton.icon(
                           onPressed: () => _openSpeedRollCall(activeStudents),
-                          icon: const Icon(Icons.bolt_rounded, size: 16, color: Colors.amber),
+                          icon: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: Image.asset(
+                              'assets/icons/3d/flash.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.bolt_rounded, size: 16, color: Colors.amber),
+                            ),
+                          ),
                           label: const Text(
-                            '⚡ Speed Call',
+                            'Speed Call',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w900,
@@ -1916,8 +1967,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         flex: 5,
                         child: OutlinedButton.icon(
                           onPressed: () => _markAll(0),
-                          icon: const Icon(Icons.done_all_rounded,
-                              size: 15, color: AppTheme.green),
+                          icon: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: Image.asset(
+                              'assets/icons/3d/fluent_clipboard.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.done_all_rounded,
+                                  size: 15, color: AppTheme.green),
+                            ),
+                          ),
                           label: const Text(
                             'All Present',
                             style: TextStyle(
@@ -1955,7 +2014,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Speed Call Quick Dial Alert Banner
+          // Speed Call Quick Dial Alert Banner with 3D Flash
           if (_absentCount > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
@@ -1979,12 +2038,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(7),
+                        width: 32,
+                        height: 32,
+                        padding: const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+                        child: Image.asset(
+                          'assets/icons/3d/flash.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -2034,7 +2099,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
             ),
 
-          // Search Field
+          // Search Field with 3D Search icon
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: TextField(
@@ -2044,8 +2109,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 hintText: 'Search student by name or roll number...',
                 hintStyle:
                     const TextStyle(fontSize: 12, color: AppTheme.darkSubtext),
-                prefixIcon: const Icon(Icons.search_rounded,
-                    size: 18, color: AppTheme.darkSubtext),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    'assets/icons/3d/search.png',
+                    width: 16,
+                    height: 16,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.search_rounded,
+                        size: 18, color: AppTheme.darkSubtext),
+                  ),
+                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 16),
@@ -2141,30 +2215,53 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildSummaryChip(
-      String label, String count, Color color, Color bgLight, bool isDark) {
+      String label, String count, String imageAsset, Color color, Color bgLight, bool isDark) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
         decoration: BoxDecoration(
           color: isDark ? color.withOpacity(0.15) : bgLight,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.2), width: 0.8),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.25), width: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(isDark ? 0.15 : 0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 1.5),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            Text(
-              count,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: color,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: Image.asset(
+                    imageAsset,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 1),
             Text(
               label,
               style: TextStyle(
                 fontSize: 9.5,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
                 color: color,
               ),
             ),

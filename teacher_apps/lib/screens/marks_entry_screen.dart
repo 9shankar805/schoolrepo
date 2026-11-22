@@ -14,12 +14,14 @@ class MarksEntryScreen extends StatefulWidget {
   final String? initialExam;
   final String? initialClass;
   final String? initialSubject;
+  final bool? isClassIncharge;
 
   const MarksEntryScreen({
     super.key,
     this.initialExam,
     this.initialClass,
     this.initialSubject,
+    this.isClassIncharge,
   });
 
   @override
@@ -36,6 +38,14 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
   int _currentStep = 0; // 0 = Setup & Scope Screen | 1 = Marks Ledger Sheet Screen
 
   String _selectedExam = 'First Terminal Examination 2081';
+  List<String> _availableExams = [
+    'First Terminal Examination 2081',
+    'Second Terminal Examination 2081',
+    'Third Terminal Examination 2081',
+    'Annual Examination 2081',
+  ];
+  final Map<String, int> _examNameToSemesterId = {};
+  String? _lastExamForSubjects;
   String? _selectedClass;
   String _selectedSubject = 'all'; // 'all' = All Subjects at Once (Master Grade Ledger)
   String? _lastClassKey;
@@ -272,9 +282,10 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
     ];
   }
 
-  Future<void> _fetchClassSubjects(int classId, List<TeacherClass> classObjList, String selectedSection) async {
-    if (_loadedClassIdForSubjects == classId) return;
+  Future<void> _fetchClassSubjects(int classId, List<TeacherClass> classObjList, String selectedSection, {bool force = false}) async {
+    if (!force && _loadedClassIdForSubjects == classId && _lastExamForSubjects == _selectedExam) return;
     _loadedClassIdForSubjects = classId;
+    _lastExamForSubjects = _selectedExam;
     if (mounted) setState(() => _isLoadingSubjects = true);
 
     try {
@@ -286,7 +297,8 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
 
       // 1. Primary: fetch from dedicated API endpoint /classes/{id}/subjects
       try {
-        final res = await _apiService.getClassSubjects(classId);
+        final semId = _examNameToSemesterId[_selectedExam];
+        final res = await _apiService.getClassSubjects(classId, semesterId: semId, examName: _selectedExam);
         if (res.success && res.data != null && res.data is List && (res.data as List).isNotEmpty) {
           final list = res.data as List;
           for (var item in list) {
@@ -296,10 +308,11 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
               final code = item['code']?.toString() ?? _generateSubjectCode(name);
               final fm = ((item['fm'] ?? item['total_marks'] ?? 100) as num).toDouble();
               final pm = ((item['pm'] ?? item['pass_marks'] ?? 40) as num).toDouble();
-              final hasPr = item['has_practical'] == true ||
+              final isPrCourse = RegExp(r'(pr\.|practical|oral)', caseSensitive: false).hasMatch(name);
+              final hasPr = item['has_practical'] == true || isPrCourse ||
                   RegExp(r'(science|sci|physic|chem|bio|comput|hpe|health|vocat|art)', caseSensitive: false).hasMatch(name);
-              final thFm = ((item['th_fm'] ?? (hasPr ? (fm > 25 ? fm - 25 : fm) : fm)) as num).toDouble();
-              final prFm = ((item['pr_fm'] ?? (hasPr ? (fm > 25 ? 25 : 0) : 0)) as num).toDouble();
+              final thFm = ((item['th_fm'] ?? (isPrCourse ? 0 : (hasPr ? (fm > 25 ? fm - 25 : fm) : fm))) as num).toDouble();
+              final prFm = ((item['pr_fm'] ?? (isPrCourse ? fm : (hasPr ? (fm > 25 ? 25 : 0) : 0))) as num).toDouble();
               fetchedSubjects.add({
                 'id': id,
                 'name': name,
@@ -311,6 +324,8 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                 'th_fm': thFm,
                 'pr_fm': prFm,
                 'is_assigned': item['is_assigned'] == true,
+                'exam_id': item['exam_id'],
+                'rule_id': item['rule_id'],
               });
             }
           }
@@ -473,9 +488,46 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
     });
   }
 
-  void _initialSetup() {
+  Future<void> _fetchExamsList() async {
+    try {
+      final res = await _apiService.getExamTerms();
+      if (res.success && res.data != null && res.data is List && (res.data as List).isNotEmpty) {
+        final list = res.data as List;
+        final names = <String>[];
+        for (var item in list) {
+          if (item is Map) {
+            final title = item['title']?.toString() ?? item['name']?.toString();
+            final semId = (item['id'] as num?)?.toInt();
+            if (title != null && title.trim().isNotEmpty && !names.contains(title.trim())) {
+              final cleanTitle = title.trim();
+              names.add(cleanTitle);
+              if (semId != null) {
+                _examNameToSemesterId[cleanTitle] = semId;
+              }
+            }
+          } else if (item is String && item.trim().isNotEmpty && !names.contains(item.trim())) {
+            names.add(item.trim());
+          }
+        }
+        if (names.isNotEmpty && mounted) {
+          setState(() {
+            _availableExams = names;
+            if (!names.contains(_selectedExam)) {
+              _selectedExam = names.first;
+            }
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _initialSetup() async {
     if (!mounted) return;
+    _fetchExamsList();
     final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
+    if (teacherProvider.classes.isEmpty) {
+      await teacherProvider.fetchClasses();
+    }
     final classesList = teacherProvider.teacherClasses;
     final classSections = classesList.map((c) => c.section).toSet().toList();
     if (classSections.isEmpty) classSections.add('Grade 10 - A');
@@ -489,19 +541,41 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
       orElse: () => classesList.isNotEmpty ? classesList.first : AppData.classes.first,
     );
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final allStudents = teacherProvider.studentList;
-    final classStudents = allStudents.where((s) {
-      if (classObj.classId != null && s.classId != null && s.classId != classObj.classId) return false;
-      if (classObj.sectionId != null && s.sectionId != null && s.sectionId != classObj.sectionId) return false;
-      return true;
-    }).toList();
+    final targetClassId = classObj.classId ?? classObj.id ?? 1;
 
-    final activeStudents = classStudents.isNotEmpty ? classStudents : allStudents;
+    // 1. Fetch real students for this specific class from server
+    List<Student> studentsToPopulate = [];
+    try {
+      final stuRes = await _apiService.getStudents(classId: targetClassId.toString());
+      if (stuRes.success && stuRes.data != null && stuRes.data!.isNotEmpty) {
+        studentsToPopulate = stuRes.data!.asMap().entries.map((e) {
+          final val = e.value;
+          if (val is Map<String, dynamic>) return Student.fromJson(val, e.key);
+          if (val is Map) return Student.fromJson(Map<String, dynamic>.from(val), e.key);
+          return Student.fromJson({}, e.key);
+        }).toList();
+      }
+    } catch (_) {}
+
+    if (studentsToPopulate.isEmpty) {
+      if (teacherProvider.studentList.isEmpty) {
+        await teacherProvider.fetchStudents();
+      }
+      final allStudents = teacherProvider.studentList;
+      final classStudents = allStudents.where((s) {
+        if (classObj.classId != null && s.classId != null && s.classId != classObj.classId) return false;
+        if (classObj.sectionId != null && s.sectionId != null && s.sectionId != classObj.sectionId) return false;
+        return true;
+      }).toList();
+      studentsToPopulate = classStudents.isNotEmpty ? classStudents : allStudents;
+    }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     // Determine if logged-in teacher is Class In-Charge (कक्षा शिक्षक) of the selected class
     final matchingClassEntries = classesList.where((c) => c.section == _selectedClass).toList();
-    final bool isClassIncharge = matchingClassEntries.any((c) => c.isClassTeacher) ||
+    final bool isClassIncharge = (widget.isClassIncharge == true) ||
+        matchingClassEntries.any((c) => c.isClassTeacher) ||
         authProvider.isAdminRole ||
         (teacherProvider.classes.any((cls) {
           if (cls is Map) {
@@ -519,17 +593,69 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
       _selectedSubject = availableNames.isNotEmpty ? availableNames.first : 'General';
     }
 
-    final targetClassId = classObj.classId ?? classObj.id ?? 1;
-    final currentKey = '${targetClassId}_${classObj.sectionId ?? 1}_${activeStudents.length}';
+    final currentKey = '${targetClassId}_${classObj.sectionId ?? 1}_${studentsToPopulate.length}';
     _lastClassKey = currentKey;
-    _populateStudents(activeStudents);
+    _populateStudents(studentsToPopulate);
+
+    if (mounted) {
+      setState(() {
+        _isInitializing = false;
+      });
+    }
+
+    await _fetchClassSubjects(targetClassId, classesList, _selectedClass!);
+    await _loadExistingMarks(targetClassId, classObj.sectionId, classObj.courseId);
+  }
+
+  Future<void> _handleClassChanged(String newClass) async {
+    if (!mounted) return;
+    final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
+    final classesList = teacherProvider.teacherClasses;
+    final targetObj = classesList.firstWhere(
+      (c) => c.section == newClass,
+      orElse: () => classesList.first,
+    );
+    final targetId = targetObj.classId ?? targetObj.id ?? 1;
 
     setState(() {
       _isInitializing = false;
+      _selectedClass = newClass;
+      _selectedSubject = 'all';
+      _isAllSubjectsMode = true;
+      _lastClassKey = null;
+      _loadedClassIdForSubjects = null;
+      _isLoadingMarks = true;
     });
 
-    _loadExistingMarks(targetClassId, classObj.sectionId, classObj.courseId);
-    _fetchClassSubjects(targetClassId, classesList, _selectedClass!);
+    // 1. Fetch real students for this newly selected class
+    List<Student> newStudents = [];
+    try {
+      final stuRes = await _apiService.getStudents(classId: targetId.toString());
+      if (stuRes.success && stuRes.data != null && stuRes.data!.isNotEmpty) {
+        newStudents = stuRes.data!.asMap().entries.map((e) {
+          final val = e.value;
+          if (val is Map<String, dynamic>) return Student.fromJson(val, e.key);
+          if (val is Map) return Student.fromJson(Map<String, dynamic>.from(val), e.key);
+          return Student.fromJson({}, e.key);
+        }).toList();
+      }
+    } catch (_) {}
+
+    if (newStudents.isEmpty) {
+      final allStudents = teacherProvider.studentList;
+      final classStudents = allStudents.where((s) {
+        if (targetObj.classId != null && s.classId != null && s.classId != targetObj.classId) return false;
+        if (targetObj.sectionId != null && s.sectionId != null && s.sectionId != targetObj.sectionId) return false;
+        return true;
+      }).toList();
+      newStudents = classStudents.isNotEmpty ? classStudents : allStudents;
+    }
+
+    if (mounted) {
+      _populateStudents(newStudents);
+      await _fetchClassSubjects(targetId, classesList, newClass);
+      await _loadExistingMarks(targetId, targetObj.sectionId, targetObj.courseId);
+    }
   }
 
   @override
@@ -602,26 +728,16 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
       }
     } catch (_) {}
 
-    // Derive semester_id from selected exam name
-    int semesterId = 1;
-    final lowerExam = _selectedExam.toLowerCase();
-    if (lowerExam.contains('second') || lowerExam.contains('2nd')) {
-      semesterId = 2;
-    } else if (lowerExam.contains('third') || lowerExam.contains('3rd')) {
-      semesterId = 3;
-    } else if (lowerExam.contains('annual') || lowerExam.contains('final') || lowerExam.contains('4th')) {
-      semesterId = 4;
-    }
-
     // 2. Fetch official server marks from live database
     try {
+      final semId = _examNameToSemesterId[_selectedExam];
       final res = await _apiService.getExamMarks(
         classId: classId,
-        sectionId: sectionId,
+        sectionId: null, // Marks are managed class-wide; do not filter out other sections
         courseId: _isAllSubjectsMode ? null : courseId,
         examId: _selectedExam,
         examName: _selectedExam,
-        semesterId: semesterId,
+        semesterId: semId,
       );
       if (res.success && res.data != null && mounted) {
         List existing = [];
@@ -629,6 +745,32 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
           existing = res.data as List;
         } else if (res.data is Map && (res.data as Map)['marks'] is List) {
           existing = (res.data as Map)['marks'] as List;
+        }
+
+        // Sync real FM/PM from server courses if returned
+        if (res.data is Map && (res.data as Map)['courses'] is List) {
+          final serverCourses = (res.data as Map)['courses'] as List;
+          for (var sc in serverCourses) {
+            if (sc is Map) {
+              final scName = sc['name']?.toString() ?? sc['course_name']?.toString() ?? '';
+              final scFm = (sc['fm'] as num?)?.toDouble();
+              final scPm = (sc['pm'] as num?)?.toDouble();
+              final scTh = (sc['th_fm'] as num?)?.toDouble();
+              final scPr = (sc['pr_fm'] as num?)?.toDouble();
+              final scHasPr = sc['has_practical'] == true;
+              for (var sub in _masterSubjects) {
+                if (sub['name'].toString().toLowerCase() == scName.toLowerCase()) {
+                  if (scFm != null) sub['fm'] = scFm;
+                  if (scPm != null) sub['pm'] = scPm;
+                  if (scTh != null) sub['th_fm'] = scTh;
+                  if (scPr != null) sub['pr_fm'] = scPr;
+                  sub['has_practical'] = scHasPr;
+                  if (sc['exam_id'] != null) sub['exam_id'] = sc['exam_id'];
+                  if (sc['rule_id'] != null) sub['rule_id'] = sc['rule_id'];
+                }
+              }
+            }
+          }
         }
 
         if (existing.isNotEmpty) {
@@ -654,6 +796,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
 
     final target = subName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
     final codeTarget = (subCode ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final isTargetPr = target.contains('pr') || target.contains('practical') || target.contains('oral');
 
     // Exact string match
     for (var entry in map.entries) {
@@ -664,8 +807,11 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
     }
 
     // Substring or prefix match (e.g. "english" vs "compulsoryenglish", "engoral" vs "eng.oral")
+    // Keep practical and non-practical subjects separate so they don't borrow each other's score
     for (var entry in map.entries) {
       final key = entry.key.toString().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+      final isKeyPr = key.contains('pr') || key.contains('practical') || key.contains('oral');
+      if (isTargetPr != isKeyPr) continue;
       if (key.length >= 3 && (target.contains(key) || key.contains(target))) {
         return entry.value;
       }
@@ -1056,17 +1202,78 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
     );
   }
 
-  // --- Action 3: Set Practical Evaluation Settings Modal ---
-  void _openPracticalSettingsModal({Map<String, dynamic>? subjectOverride}) {
-    final targetSub = subjectOverride ?? _getCurrentSubject();
-    final bool isSingle = !_isAllSubjectsMode || subjectOverride != null;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildPresetChip(
+    String label,
+    double fm,
+    double pm,
+    StateSetter setModalState,
+    TextEditingController fmCtrl,
+    TextEditingController pmCtrl,
+    TextEditingController thCtrl,
+    TextEditingController prCtrl,
+    bool hasPr,
+  ) {
+    final isSelected = fmCtrl.text == fm.toInt().toString() && pmCtrl.text == pm.toInt().toString();
+    return InkWell(
+      onTap: () {
+        setModalState(() {
+          fmCtrl.text = fm.toInt().toString();
+          pmCtrl.text = pm.toInt().toString();
+          if (hasPr) {
+            final pr = fm > 25 ? 25.0 : (fm * 0.25);
+            final th = fm - pr;
+            thCtrl.text = th.toInt().toString();
+            prCtrl.text = pr.toInt().toString();
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : AppTheme.primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.primary.withOpacity(0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: isSelected ? Colors.white : AppTheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
 
-    bool tempHasPr = (targetSub['has_practical'] as bool?) ?? false;
-    double tempThFm = ((targetSub['th_fm'] ?? 75.0) as num).toDouble();
-    double tempPrFm = ((targetSub['pr_fm'] ?? 25.0) as num).toDouble();
-    final TextEditingController thCtrl = TextEditingController(text: tempThFm.toStringAsFixed(0));
-    final TextEditingController prCtrl = TextEditingController(text: tempPrFm.toStringAsFixed(0));
+  // --- Action 3: Set Exam Full Marks & Pass Marks (Web & App Synced) ---
+  void _openPracticalSettingsModal({Map<String, dynamic>? subjectOverride}) =>
+      _openRuleEditModal(subjectOverride: subjectOverride);
+
+  void _openRuleEditModal({Map<String, dynamic>? subjectOverride}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
+    final classesList = teacherProvider.teacherClasses;
+    final targetClassObj = classesList.firstWhere(
+      (c) => c.section == _selectedClass,
+      orElse: () => classesList.isNotEmpty ? classesList.first : AppData.classes.first,
+    );
+    final targetClassId = targetClassObj.classId ?? targetClassObj.id ?? 1;
+
+    Map<String, dynamic> activeSub = subjectOverride ?? _getCurrentSubject();
+    bool hasPr = (activeSub['has_practical'] as bool?) ?? false;
+    double currentFm = ((activeSub['fm'] ?? 100.0) as num).toDouble();
+    double currentPm = ((activeSub['pm'] ?? 40.0) as num).toDouble();
+    double currentTh = ((activeSub['th_fm'] ?? (hasPr ? (currentFm > 25 ? currentFm - 25 : currentFm) : currentFm)) as num).toDouble();
+    double currentPr = ((activeSub['pr_fm'] ?? (hasPr ? (currentFm > 25 ? 25 : 0) : 0)) as num).toDouble();
+
+    final TextEditingController fmCtrl = TextEditingController(text: currentFm.toInt().toString());
+    final TextEditingController pmCtrl = TextEditingController(text: currentPm.toInt().toString());
+    final TextEditingController thCtrl = TextEditingController(text: currentTh.toInt().toString());
+    final TextEditingController prCtrl = TextEditingController(text: currentPr.toInt().toString());
+    bool isSaving = false;
+    String? errorMessage;
 
     showModalBottomSheet(
       context: context,
@@ -1107,7 +1314,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                           color: AppTheme.primary.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.science_rounded, color: AppTheme.primary, size: 22),
+                        child: const Icon(Icons.tune_rounded, color: AppTheme.primary, size: 22),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -1115,14 +1322,12 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isSingle
-                                  ? 'Practical Evaluation: ${targetSub['name']}'
-                                  : 'Curriculum Practical Settings',
+                              'Edit Exam Marks: ${activeSub['name']}',
                               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
                             ),
-                            const Text(
-                              'Nepal CDC / School Management Mark System',
-                              style: TextStyle(fontSize: 11, color: AppTheme.darkSubtext, fontWeight: FontWeight.w600),
+                            Text(
+                              'Full Marks & Pass Marks (Web & App Synced)',
+                              style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppTheme.darkSubtext, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
@@ -1135,247 +1340,373 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                   ),
                   const Divider(height: 24),
 
-                  if (!isSingle) ...[
-                    const Text(
-                      'Toggle Practical for Each Subject:',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  if (errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, size: 16, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    ..._masterSubjects.map((sub) {
-                      final bool sHasPr = (sub['has_practical'] as bool?) ?? false;
-                      final sTh = (sub['th_fm'] ?? 75).toInt();
-                      final sPr = (sub['pr_fm'] ?? 25).toInt();
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppTheme.darkBg : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: sHasPr ? AppTheme.primary.withOpacity(0.4) : AppTheme.cardBorder),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // If in all subjects mode and no specific subject passed, allow switching subject
+                  if (_isAllSubjectsMode && subjectOverride == null) ...[
+                    const Text('Select Subject to Configure:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkBg : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.cardBorder),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: activeSub['name'] as String,
+                          isExpanded: true,
+                          items: _masterSubjects.map((s) {
+                            return DropdownMenuItem<String>(
+                              value: s['name'] as String,
+                              child: Text(
+                                '${s['name']} (FM: ${(s['fm'] ?? 100).toInt()} | PM: ${(s['pm'] ?? 40).toInt()})',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newSubName) {
+                            if (newSubName != null) {
+                              setModalState(() {
+                                activeSub = _masterSubjects.firstWhere((s) => s['name'] == newSubName, orElse: () => activeSub);
+                                hasPr = (activeSub['has_practical'] as bool?) ?? false;
+                                currentFm = ((activeSub['fm'] ?? 100.0) as num).toDouble();
+                                currentPm = ((activeSub['pm'] ?? 40.0) as num).toDouble();
+                                currentTh = ((activeSub['th_fm'] ?? (hasPr ? (currentFm > 25 ? currentFm - 25 : currentFm) : currentFm)) as num).toDouble();
+                                currentPr = ((activeSub['pr_fm'] ?? (hasPr ? (currentFm > 25 ? 25 : 0) : 0)) as num).toDouble();
+                                fmCtrl.text = currentFm.toInt().toString();
+                                pmCtrl.text = currentPm.toInt().toString();
+                                thCtrl.text = currentTh.toInt().toString();
+                                prCtrl.text = currentPr.toInt().toString();
+                              });
+                            }
+                          },
                         ),
-                        child: Row(
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Standard preset chips
+                  const Text('Quick Marks Presets:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _buildPresetChip('FM: 100 | PM: 40', 100, 40, setModalState, fmCtrl, pmCtrl, thCtrl, prCtrl, hasPr),
+                      _buildPresetChip('FM: 50 | PM: 20', 50, 20, setModalState, fmCtrl, pmCtrl, thCtrl, prCtrl, hasPr),
+                      _buildPresetChip('FM: 40 | PM: 16', 40, 16, setModalState, fmCtrl, pmCtrl, thCtrl, prCtrl, hasPr),
+                      _buildPresetChip('FM: 25 | PM: 10', 25, 10, setModalState, fmCtrl, pmCtrl, thCtrl, prCtrl, hasPr),
+                      _buildPresetChip('FM: 10 | PM: 4', 10, 4, setModalState, fmCtrl, pmCtrl, thCtrl, prCtrl, hasPr),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Full Marks & Pass Marks Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Full Marks (FM / कुल पूर्णांक)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: fmCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText: '100',
+                                prefixIcon: const Icon(Icons.grade_rounded, size: 18),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onChanged: (v) {
+                                final parsedFm = double.tryParse(v);
+                                if (parsedFm != null && parsedFm > 0) {
+                                  setModalState(() {
+                                    currentFm = parsedFm;
+                                    final suggestedPm = (parsedFm * 0.4).roundToDouble();
+                                    pmCtrl.text = suggestedPm.toInt().toString();
+                                    currentPm = suggestedPm;
+                                    if (hasPr) {
+                                      currentPr = parsedFm > 25 ? 25.0 : (parsedFm * 0.25);
+                                      currentTh = parsedFm - currentPr;
+                                      thCtrl.text = currentTh.toInt().toString();
+                                      prCtrl.text = currentPr.toInt().toString();
+                                    }
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Pass Marks (PM / उत्तीर्णांक)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: pmCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText: '40',
+                                prefixIcon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onChanged: (v) {
+                                final parsedPm = double.tryParse(v);
+                                if (parsedPm != null) {
+                                  currentPm = parsedPm;
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Practical evaluation section
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkBg : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: hasPr ? AppTheme.primary.withOpacity(0.4) : AppTheme.cardBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
                             Icon(
-                              sHasPr ? Icons.science_rounded : Icons.menu_book_rounded,
-                              size: 18,
-                              color: sHasPr ? AppTheme.primary : AppTheme.grey,
+                              hasPr ? Icons.science_rounded : Icons.science_outlined,
+                              size: 20,
+                              color: hasPr ? AppTheme.primary : AppTheme.grey,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(sub['name'] as String, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+                                  const Text(
+                                    'Has Practical / CAS component?',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                                  ),
                                   Text(
-                                    sHasPr ? 'Practical: YES ($sTh TH + $sPr PR)' : 'Practical: NO (100% Theory)',
-                                    style: TextStyle(fontSize: 10.5, color: sHasPr ? AppTheme.primary : AppTheme.darkSubtext, fontWeight: FontWeight.w600),
+                                    hasPr
+                                        ? 'Theory + Practical separate inputs'
+                                        : 'Theory only (Single total score input)',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: hasPr ? AppTheme.primary : AppTheme.darkSubtext,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                             Switch.adaptive(
-                              value: sHasPr,
+                              value: hasPr,
                               activeColor: AppTheme.primary,
                               onChanged: (val) {
                                 setModalState(() {
-                                  sub['has_practical'] = val;
+                                  hasPr = val;
+                                  final tot = double.tryParse(fmCtrl.text) ?? 100.0;
                                   if (val) {
-                                    sub['th_fm'] = sub['th_fm'] ?? 75.0;
-                                    sub['pr_fm'] = sub['pr_fm'] ?? 25.0;
+                                    currentPr = tot > 25 ? 25.0 : (tot * 0.25);
+                                    currentTh = tot - currentPr;
+                                    thCtrl.text = currentTh.toInt().toString();
+                                    prCtrl.text = currentPr.toInt().toString();
+                                  } else {
+                                    currentTh = tot;
+                                    currentPr = 0.0;
+                                    thCtrl.text = tot.toInt().toString();
+                                    prCtrl.text = '0';
                                   }
-                                });
-                                setState(() {
-                                  sub['has_practical'] = val;
                                 });
                               },
                             ),
                           ],
                         ),
-                      );
-                    }),
-                    const SizedBox(height: 12),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppTheme.darkBg : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: tempHasPr ? AppTheme.primary.withOpacity(0.4) : AppTheme.cardBorder),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            tempHasPr ? Icons.science_rounded : Icons.science_outlined,
-                            size: 22,
-                            color: tempHasPr ? AppTheme.primary : AppTheme.grey,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Does this subject have Practical / CAS?',
-                                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                        if (hasPr) ...[
+                          const Divider(height: 18),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Theory FM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 4),
+                                    TextField(
+                                      controller: thCtrl,
+                                      keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onChanged: (v) {
+                                        currentTh = double.tryParse(v) ?? currentTh;
+                                      },
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  tempHasPr
-                                      ? 'YES: Students evaluated on Theory + Practical'
-                                      : 'NO: 100% Theory exam only (No practical marks)',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: tempHasPr ? AppTheme.primary : AppTheme.darkSubtext,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Practical FM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 4),
+                                    TextField(
+                                      controller: prCtrl,
+                                      keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onChanged: (v) {
+                                        currentPr = double.tryParse(v) ?? currentPr;
+                                      },
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
-                          Switch.adaptive(
-                            value: tempHasPr,
-                            activeColor: AppTheme.primary,
-                            onChanged: (val) {
-                              setModalState(() {
-                                tempHasPr = val;
-                              });
-                            },
+                              ),
+                            ],
                           ),
                         ],
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 14),
-
-                    if (tempHasPr) ...[
-                      const Text(
-                        'Select Standard Curriculum Ratio:',
-                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('CDC Standard (75 TH + 25 PR)'),
-                            selected: tempThFm == 75.0 && tempPrFm == 25.0,
-                            onSelected: (sel) {
-                              if (sel) {
-                                setModalState(() {
-                                  tempThFm = 75.0;
-                                  tempPrFm = 25.0;
-                                  thCtrl.text = '75';
-                                  prCtrl.text = '25';
-                                });
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Equal Split (50 TH + 50 PR)'),
-                            selected: tempThFm == 50.0 && tempPrFm == 50.0,
-                            onSelected: (sel) {
-                              if (sel) {
-                                setModalState(() {
-                                  tempThFm = 50.0;
-                                  tempPrFm = 50.0;
-                                  thCtrl.text = '50';
-                                  prCtrl.text = '50';
-                                });
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Theory Full Marks (TH)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 4),
-                                TextField(
-                                  controller: thCtrl,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    hintText: '75',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                  onChanged: (v) {
-                                    tempThFm = double.tryParse(v) ?? 75.0;
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Practical Full Marks (PR)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 4),
-                                TextField(
-                                  controller: prCtrl,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    hintText: '25',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                  onChanged: (v) {
-                                    tempPrFm = double.tryParse(v) ?? 25.0;
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Total Full Marks = ${(tempThFm + tempPrFm).toInt()} (Pass Marks: ${(targetSub['pm'] ?? 40).toInt()})',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.darkSubtext),
-                      ),
-                    ],
-                  ],
-
+                  ),
                   const SizedBox(height: 18),
+
+                  // Save button
                   SizedBox(
                     width: double.infinity,
-                    height: 44,
+                    height: 46,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      onPressed: () {
-                        setState(() {
-                          if (isSingle) {
-                            targetSub['has_practical'] = tempHasPr;
-                            targetSub['th_fm'] = tempThFm;
-                            targetSub['pr_fm'] = tempPrFm;
-                            targetSub['fm'] = tempHasPr ? (tempThFm + tempPrFm) : targetSub['fm'];
-                            _syncSingleSubjectControllersFromMaster(_selectedSubject);
-                          }
-                          _recalculateAll();
+                      onPressed: isSaving ? null : () async {
+                        final parsedFm = double.tryParse(fmCtrl.text);
+                        final parsedPm = double.tryParse(pmCtrl.text);
+                        if (parsedFm == null || parsedFm <= 0) {
+                          setModalState(() => errorMessage = 'Please enter a valid Full Marks (e.g. 100, 50, 40).');
+                          return;
+                        }
+                        if (parsedPm == null || parsedPm < 0) {
+                          setModalState(() => errorMessage = 'Please enter a valid Pass Marks (e.g. 40, 20, 16).');
+                          return;
+                        }
+                        if (parsedPm > parsedFm) {
+                          setModalState(() => errorMessage = 'Pass Marks ($parsedPm) cannot exceed Full Marks ($parsedFm).');
+                          return;
+                        }
+
+                        setModalState(() {
+                          isSaving = true;
+                          errorMessage = null;
                         });
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              tempHasPr
-                                  ? 'Practical enabled: ${tempThFm.toInt()} Theory + ${tempPrFm.toInt()} Practical ✅'
-                                  : 'Practical disabled: Single 100% Theory score ✅',
-                            ),
-                            backgroundColor: AppTheme.primary,
-                            duration: const Duration(seconds: 2),
-                          ),
+
+                        final courseId = (activeSub['id'] as num?)?.toInt() ?? 1;
+                        final courseName = activeSub['name'] as String;
+
+                        final double thVal = hasPr ? (double.tryParse(thCtrl.text) ?? (parsedFm - 25)) : parsedFm;
+                        final double prVal = hasPr ? (double.tryParse(prCtrl.text) ?? 25.0) : 0.0;
+
+                        final semId = _examNameToSemesterId[_selectedExam];
+                        final res = await _apiService.updateExamRule(
+                          classId: targetClassId,
+                          courseId: courseId,
+                          courseName: courseName,
+                          semesterId: semId,
+                          examName: _selectedExam,
+                          totalMarks: parsedFm,
+                          passMarks: parsedPm,
+                          thFm: thVal,
+                          prFm: prVal,
                         );
+
+                        if (!mounted) return;
+
+                        if (res.success) {
+                          setState(() {
+                            activeSub['fm'] = parsedFm;
+                            activeSub['pm'] = parsedPm;
+                            activeSub['has_practical'] = hasPr;
+                            activeSub['th_fm'] = thVal;
+                            activeSub['pr_fm'] = prVal;
+
+                            // Also clamp any input marks exceeding new full marks
+                            for (var st in _studentsMarks) {
+                              final controllers = st['subjectControllers'] as Map<String, TextEditingController>?;
+                              final ctrl = controllers?[courseName];
+                              if (ctrl != null && ctrl.text.isNotEmpty) {
+                                final val = double.tryParse(ctrl.text);
+                                if (val != null && val > parsedFm) {
+                                  ctrl.text = parsedFm.toInt().toString();
+                                }
+                              }
+                            }
+
+                            if (!_isAllSubjectsMode) {
+                              _syncSingleSubjectControllersFromMaster(_selectedSubject);
+                            }
+                            _recalculateAll();
+                          });
+
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Updated $courseName: Full Marks: ${parsedFm.toInt()}, Pass Marks: ${parsedPm.toInt()} ✅'),
+                              backgroundColor: const Color(0xFF059669),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        } else {
+                          setModalState(() {
+                            isSaving = false;
+                            errorMessage = res.message.isNotEmpty ? res.message : 'Failed to update rule on server.';
+                          });
+                        }
                       },
-                      child: const Text('Save & Apply Settings', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                      child: isSaving
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                          : const Text('Save Exam Rule (सुरक्षित गर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                     ),
                   ),
                 ],
@@ -1510,14 +1841,16 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
       return;
     }
 
-    int semesterId = 1;
-    final lowerExam = _selectedExam.toLowerCase();
-    if (lowerExam.contains('second') || lowerExam.contains('2nd')) {
-      semesterId = 2;
-    } else if (lowerExam.contains('third') || lowerExam.contains('3rd')) {
-      semesterId = 3;
-    } else if (lowerExam.contains('annual') || lowerExam.contains('final') || lowerExam.contains('4th')) {
-      semesterId = 4;
+    int semesterId = _examNameToSemesterId[_selectedExam] ?? 1;
+    if (!_examNameToSemesterId.containsKey(_selectedExam)) {
+      final lowerExam = _selectedExam.toLowerCase();
+      if (lowerExam.contains('second') || lowerExam.contains('2nd')) {
+        semesterId = 2;
+      } else if (lowerExam.contains('third') || lowerExam.contains('3rd')) {
+        semesterId = 3;
+      } else if (lowerExam.contains('annual') || lowerExam.contains('final') || lowerExam.contains('4th')) {
+        semesterId = 4;
+      }
     }
 
     final targetClassId = classObj.classId ?? classObj.id ?? 1;
@@ -2609,20 +2942,19 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                   _buildSelector(
                     'Exam / Terminal Assessment',
                     _selectedExam,
-                    [
-                      'First Terminal Examination 2081',
-                      'Second Terminal Examination 2081',
-                      'Third Terminal Examination 2081',
-                      'Annual Examination 2081',
-                    ],
-                    (v) {
+                    _availableExams,
+                    (v) async {
                       if (v != null && v != _selectedExam) {
-                        setState(() => _selectedExam = v);
+                        setState(() {
+                          _selectedExam = v;
+                          _loadedClassIdForSubjects = null;
+                        });
                         final targetObj = classesList.firstWhere(
                           (c) => c.section == _selectedClass,
                           orElse: () => classesList.first,
                         );
                         final targetId = targetObj.classId ?? targetObj.id ?? 1;
+                        await _fetchClassSubjects(targetId, classesList, _selectedClass!, force: true);
                         _loadExistingMarks(targetId, targetObj.sectionId, targetObj.courseId);
                       }
                     },
@@ -2650,6 +2982,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                         );
                         final targetId = targetObj.classId ?? targetObj.id ?? 1;
                         _fetchClassSubjects(targetId, classesList, v);
+                        _handleClassChanged(v);
                       }
                     },
                     isDark,
@@ -2869,7 +3202,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        '$_selectedClass • ${_isAllSubjectsMode ? "Master Ledger" : _selectedSubject}',
+                        '${_selectedClass?.split('—').first.trim() ?? _selectedClass} • ${_isAllSubjectsMode ? "Ledger" : _selectedSubject}',
                         style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -2981,6 +3314,19 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                   borderColor: isDark ? const Color(0xFF10B981) : const Color(0xFFA7F3D0),
                   textColor: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
                   onTap: _recalculateAll,
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+
+                // Edit FM / PM (Full Marks & Pass Marks)
+                _buildToolbarButton(
+                  icon: Icons.tune_rounded,
+                  label: 'Edit FM/PM',
+                  color: AppTheme.primary,
+                  backgroundColor: isDark ? AppTheme.primary.withOpacity(0.15) : const Color(0xFFEFF6FF),
+                  borderColor: isDark ? AppTheme.primary.withOpacity(0.4) : const Color(0xFFBFDBFE),
+                  textColor: isDark ? const Color(0xFF93C5FD) : AppTheme.primary,
+                  onTap: () => _openRuleEditModal(),
                   isDark: isDark,
                 ),
                 const SizedBox(width: 8),
@@ -4118,32 +4464,50 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      sName, // Show full subject name!
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                              InkWell(
+                                onTap: () => _openRuleEditModal(subjectOverride: sub),
+                                borderRadius: BorderRadius.circular(4),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          sName, // Show full subject name!
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                      const SizedBox(width: 4),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            hasPr
+                                                ? 'TH:${(sub['th_fm'] ?? 75).toInt()}+PR:${(sub['pr_fm'] ?? 25).toInt()}'
+                                                : 'FM:$fm',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w700,
+                                              color: hasPr ? AppTheme.primary : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Icon(
+                                            Icons.edit_note_rounded,
+                                            size: 11,
+                                            color: hasPr ? AppTheme.primary : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    hasPr
-                                        ? 'TH:${(sub['th_fm'] ?? 75).toInt()}+PR:${(sub['pr_fm'] ?? 25).toInt()}'
-                                        : 'FM:$fm',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                      color: hasPr ? AppTheme.primary : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                               const SizedBox(height: 3),
                               SizedBox(

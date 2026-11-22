@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../data/app_data.dart';
 import '../widgets/common_widgets.dart';
@@ -19,29 +20,75 @@ class _StudentsScreenState extends State<StudentsScreen> {
   String _query = '';
   String _selectedClass = 'All';
 
+  String _normalize(String text) {
+    return text
+        .replaceAll('—', '-')
+        .replaceAll('–', '-')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .toLowerCase();
+  }
+
   List<String> _getClassOptions(TeacherProvider teacher) {
+    final opts = <String>['All'];
     if (teacher.teacherClasses.isNotEmpty) {
-      final opts = <String>['All'];
       for (final c in teacher.teacherClasses) {
         if (!opts.contains(c.section)) opts.add(c.section);
       }
-      return opts;
+    } else {
+      for (final c in AppData.classes) {
+        if (!opts.contains(c.section)) opts.add(c.section);
+      }
     }
-    return ['All', ...AppData.classes.map((c) => c.section)];
+    for (final s in teacher.studentList) {
+      final sec = s.displayClassSection;
+      if (sec.isNotEmpty && !sec.startsWith('A') && !sec.startsWith('B') && !sec.startsWith('C') && !opts.contains(sec)) {
+        opts.add(sec);
+      }
+    }
+    return opts;
   }
 
   List<Student> _getFiltered(TeacherProvider teacher) {
     List<Student> list = teacher.studentList;
 
     if (_selectedClass != 'All') {
-      list = list.where((s) => s.grade.toLowerCase().contains(_selectedClass.toLowerCase()) ||
-          _selectedClass.toLowerCase().contains(s.grade.toLowerCase())).toList();
+      final targetNorm = _normalize(_selectedClass);
+      list = list.where((s) {
+        final secNorm = _normalize(s.displayClassSection);
+        final gradeNorm = _normalize(s.grade);
+        final cNameNorm = _normalize(s.className ?? '');
+        final sNameNorm = _normalize(s.sectionName ?? '');
+
+        // 1. Direct classSection match (e.g. "class 1 - a" == "class 1 - a")
+        if (secNorm == targetNorm || secNorm.contains(targetNorm) || targetNorm.contains(secNorm)) {
+          return true;
+        }
+
+        // 2. Component match (e.g. className = "class 1", sectionName = "a")
+        if (cNameNorm.isNotEmpty && targetNorm.contains(cNameNorm)) {
+          if (sNameNorm.isEmpty || targetNorm.contains(sNameNorm)) {
+            return true;
+          }
+        }
+
+        // 3. Fallback grade match if grade carries class string
+        if (gradeNorm.contains('class') || gradeNorm.contains('grade') || gradeNorm.contains('kg')) {
+          if (gradeNorm == targetNorm || gradeNorm.contains(targetNorm) || targetNorm.contains(gradeNorm)) {
+            return true;
+          }
+        }
+
+        return false;
+      }).toList();
     }
 
     if (_query.isNotEmpty) {
+      final q = _query.toLowerCase().trim();
       list = list.where((s) =>
-          s.name.toLowerCase().contains(_query.toLowerCase()) ||
-          s.rollNo.contains(_query)).toList();
+          s.name.toLowerCase().contains(q) ||
+          s.rollNo.toLowerCase().contains(q) ||
+          s.displayClassSection.toLowerCase().contains(q)).toList();
     }
     return list;
   }
@@ -123,57 +170,163 @@ class _StudentsScreenState extends State<StudentsScreen> {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            itemCount: filtered.length,
-            itemBuilder: (_, i) {
-              final s = filtered[i];
-              return AppCard(
-                padding: const EdgeInsets.all(14),
-                onTap: () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => StudentDetailScreen(student: s))),
-                child: Row(children: [
-                  Container(
-                    width: 48, height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: [
-                        _gradeColor(s.grade),
-                        _gradeColor(s.grade).withOpacity(0.6),
-                      ]),
+          child: RefreshIndicator(
+            onRefresh: () => teacher.refreshAll(),
+            child: filtered.isEmpty
+                ? SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.person_search_rounded,
+                                size: 44, color: AppTheme.primary),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _query.isNotEmpty
+                                ? 'कुनै विद्यार्थी फेला परेन'
+                                : '$_selectedClass मा कुनै विद्यार्थी फेला परेन',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : AppTheme.dark,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _query.isNotEmpty
+                                ? 'No students matching "$_query"'
+                                : 'No students found for $_selectedClass. Pull down to refresh.',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.grey),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Center(child: Text(s.avatar,
-                        style: const TextStyle(color: Colors.white,
-                            fontWeight: FontWeight.w800, fontSize: 18))),
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final s = filtered[i];
+                      return AppCard(
+                        padding: const EdgeInsets.all(14),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => StudentDetailScreen(student: s))),
+                        child: Row(children: [
+                          s.photoUrl != null && s.photoUrl!.isNotEmpty
+                              ? ClipOval(
+                                  child: CachedNetworkImage(
+                                    imageUrl: s.photoUrl!,
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, __) => Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: _gradeColor(s.grade).withOpacity(0.2),
+                                      ),
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (_, __, ___) => Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: LinearGradient(colors: [
+                                          _gradeColor(s.grade),
+                                          _gradeColor(s.grade).withOpacity(0.6),
+                                        ]),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          s.avatar,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(colors: [
+                                      _gradeColor(s.grade),
+                                      _gradeColor(s.grade).withOpacity(0.6),
+                                    ]),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      s.avatar,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                          const SizedBox(width: 12),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(s.name, style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${s.displayClassSection} • Roll #${s.rollNo}',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Row(children: [
+                              const Icon(Icons.school_outlined, size: 12, color: AppTheme.grey),
+                              const SizedBox(width: 4),
+                              Text('GPA: ${s.gpa.toStringAsFixed(2)}',
+                                  style: const TextStyle(fontSize: 11, color: AppTheme.grey)),
+                              const SizedBox(width: 10),
+                              const Icon(Icons.how_to_reg_outlined, size: 12, color: AppTheme.grey),
+                              const SizedBox(width: 4),
+                              Text('${(s.attendance * 100).toInt()}%',
+                                  style: TextStyle(fontSize: 11,
+                                      color: s.attendance >= 0.85 ? AppTheme.green
+                                          : s.attendance >= 0.75 ? AppTheme.orange : AppTheme.red)),
+                            ]),
+                          ])),
+                          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                            GradeBadge(grade: s.grade),
+                            const SizedBox(height: 4),
+                            Text('#${s.rank}', style: const TextStyle(
+                                fontSize: 11, color: AppTheme.grey)),
+                          ]),
+                        ]),
+                      ).animate().fadeIn(delay: (i * 50).ms);
+                    },
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(s.name, style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Row(children: [
-                      const Icon(Icons.school_outlined, size: 12, color: AppTheme.grey),
-                      const SizedBox(width: 4),
-                      Text('GPA: ${s.gpa.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 12, color: AppTheme.grey)),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.how_to_reg_outlined, size: 12, color: AppTheme.grey),
-                      const SizedBox(width: 4),
-                      Text('${(s.attendance * 100).toInt()}%',
-                          style: TextStyle(fontSize: 12,
-                              color: s.attendance >= 0.85 ? AppTheme.green
-                                  : s.attendance >= 0.75 ? AppTheme.orange : AppTheme.red)),
-                    ]),
-                  ])),
-                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    GradeBadge(grade: s.grade),
-                    const SizedBox(height: 4),
-                    Text('#${s.rank}', style: const TextStyle(
-                        fontSize: 11, color: AppTheme.grey)),
-                  ]),
-                ]),
-              ).animate().fadeIn(delay: (i * 50).ms);
-            },
           ),
         ),
       ]),
@@ -197,6 +350,7 @@ class StudentDetailScreen extends StatelessWidget {
     final rollCtrl = TextEditingController(text: student.rollNo);
     final parentCtrl = TextEditingController(text: student.parentName);
     final phoneCtrl = TextEditingController(text: student.parentPhone);
+    final photoCtrl = TextEditingController(text: student.photoUrl ?? '');
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -354,6 +508,32 @@ class StudentDetailScreen extends StatelessWidget {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                   ),
+                  const SizedBox(height: 12),
+
+                  // Student Photo URL / Image Link
+                  TextField(
+                    controller: photoCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Student Photo (Image Link / URL)',
+                      labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      prefixIcon: const Icon(Icons.photo_camera_back_rounded, size: 16),
+                      suffixIcon: photoCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 16),
+                              onPressed: () => setModalState(() => photoCtrl.clear()),
+                            )
+                          : null,
+                      hintText: 'Auto-converts to optimized WebP',
+                      hintStyle: const TextStyle(fontSize: 11, color: AppTheme.grey),
+                      filled: true,
+                      fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                  ),
                   const SizedBox(height: 18),
 
                   // Save Button
@@ -373,6 +553,7 @@ class StudentDetailScreen extends StatelessWidget {
                               final newRoll = rollCtrl.text.trim();
                               final newParent = parentCtrl.text.trim();
                               final newPhone = phoneCtrl.text.trim();
+                              final newPhoto = photoCtrl.text.trim();
 
                               if (newName.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -385,20 +566,39 @@ class StudentDetailScreen extends StatelessWidget {
 
                               try {
                                 if (student.id != null) {
-                                  await ApiService().updateStudent(
+                                  final updatePayload = <String, dynamic>{
+                                    'name': newName,
+                                    'roll_no': newRoll,
+                                    'parent_name': newParent,
+                                    'parent_phone': newPhone,
+                                  };
+                                  if (newPhoto.isNotEmpty) {
+                                    updatePayload['photo'] = newPhoto;
+                                    updatePayload['photo_url'] = newPhoto;
+                                  }
+
+                                  final res = await ApiService().updateStudent(
                                     student.id.toString(),
-                                    {
-                                      'name': newName,
-                                      'roll_no': newRoll,
-                                      'parent_name': newParent,
-                                      'parent_phone': newPhone,
-                                    },
+                                    updatePayload,
                                   );
+
+                                  if (!res.success) {
+                                    if (context.mounted) {
+                                      setModalState(() => isSaving = false);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: AppTheme.red,
+                                          content: Text(res.message.isNotEmpty ? res.message : 'Failed to update student.'),
+                                        ),
+                                      );
+                                    }
+                                    return;
+                                  }
                                 }
 
                                 if (context.mounted) {
                                   final teacher = Provider.of<TeacherProvider>(context, listen: false);
-                                  teacher.fetchStudents();
+                                  await teacher.fetchStudents();
                                   Navigator.pop(sheetCtx);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -417,7 +617,10 @@ class StudentDetailScreen extends StatelessWidget {
                                 if (context.mounted) {
                                   setModalState(() => isSaving = false);
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error saving changes: $e')),
+                                    SnackBar(
+                                      backgroundColor: AppTheme.red,
+                                      content: Text('Error saving changes: $e'),
+                                    ),
                                   );
                                 }
                               }
@@ -469,14 +672,66 @@ class StudentDetailScreen extends StatelessWidget {
           GradientCard(
             colors: [color, color.withOpacity(0.6)],
             child: Row(children: [
-              Container(
-                width: 72, height: 72,
-                decoration: BoxDecoration(
-                    color: Colors.white24, shape: BoxShape.circle),
-                child: Center(child: Text(student.avatar,
-                    style: const TextStyle(color: Colors.white,
-                        fontSize: 28, fontWeight: FontWeight.w900))),
-              ),
+              student.photoUrl != null && student.photoUrl!.isNotEmpty
+                  ? ClipOval(
+                      child: CachedNetworkImage(
+                        imageUrl: student.photoUrl!,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          width: 72,
+                          height: 72,
+                          decoration: const BoxDecoration(
+                            color: Colors.white24,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          width: 72,
+                          height: 72,
+                          decoration: const BoxDecoration(
+                            color: Colors.white24,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              student.avatar,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      width: 72,
+                      height: 72,
+                      decoration: const BoxDecoration(
+                        color: Colors.white24,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          student.avatar,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
               const SizedBox(width: 16),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(student.name, style: const TextStyle(

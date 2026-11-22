@@ -234,8 +234,14 @@ class _ReportCardScreenState extends State<ReportCardScreen> {
                                       ),
                                     ],
                                   ),
-                                  child: const Center(
-                                    child: Icon(Icons.school_rounded, color: Color(0xFF1E3A8A), size: 32),
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      'assets/icons/icon.jpg',
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => const Center(
+                                        child: Icon(Icons.school_rounded, color: Color(0xFF1E3A8A), size: 32),
+                                      ),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 14),

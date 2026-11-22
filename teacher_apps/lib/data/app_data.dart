@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class TeacherClass {
   final String name, section, room, time, subject, period;
@@ -50,7 +51,14 @@ class TeacherClass {
       name: json['name']?.toString() ?? json['subject']?.toString() ?? 'General Course',
       section: sec,
       room: json['room']?.toString() ?? 'Room ${101 + index}',
-      time: json['time']?.toString() ?? '09:${((index * 45) % 60).toString().padLeft(2, '0')} AM',
+      time: json['time']?.toString() ?? () {
+        final totalMin = 9 * 60 + (index * 45);
+        final h = totalMin ~/ 60;
+        final m = totalMin % 60;
+        final amPm = h >= 12 ? 'PM' : 'AM';
+        final displayH = h > 12 ? h - 12 : (h == 0 ? 12 : h);
+        return '${displayH.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')} $amPm';
+      }(),
       subject: json['subject']?.toString() ?? json['name']?.toString() ?? 'Subject',
       period: json['period']?.toString() ?? 'Period ${index + 1}',
       students: json['students'] is int
@@ -77,6 +85,9 @@ class Student {
   final String? phone;
   final int? sectionId;
   final int? classId;
+  final String? className;
+  final String? sectionName;
+  final String? classSection;
   final String? photoUrl;
   final String? _parentName;
   final String? _parentPhone;
@@ -85,6 +96,12 @@ class Student {
   double get attendanceRate => attendance;
   String get parentName => _parentName ?? 'Parent of $name';
   String get parentPhone => _parentPhone ?? '+977 9841000000';
+  String get displayClassSection {
+    if (classSection != null && classSection!.isNotEmpty) return classSection!;
+    if (className != null && sectionName != null) return '$className — $sectionName';
+    if (className != null) return className!;
+    return grade;
+  }
 
   const Student({
     required this.name,
@@ -99,6 +116,9 @@ class Student {
     this.phone,
     this.sectionId,
     this.classId,
+    this.className,
+    this.sectionName,
+    this.classSection,
     this.photoUrl,
     String? parentName,
     String? parentPhone,
@@ -118,8 +138,32 @@ class Student {
         ? (json['attendance'] as num).toDouble()
         : (double.tryParse(json['attendance']?.toString() ?? '') ?? 0.95);
 
-    final gradeStr = json['grade']?.toString() ??
-        (gpaVal >= 3.6 ? 'A+' : (gpaVal >= 3.2 ? 'A' : (gpaVal >= 2.8 ? 'B+' : 'B')));
+    final className = json['class_name']?.toString() ?? json['class']?.toString();
+    final sectionName = json['section_name']?.toString() ?? json['section']?.toString();
+    final rawGrade = json['grade']?.toString();
+    final isGradeClass = rawGrade != null &&
+        (rawGrade.contains('Class') ||
+            rawGrade.contains('Grade') ||
+            rawGrade.contains('-') ||
+            rawGrade.contains('—') ||
+            rawGrade.contains('UKG') ||
+            rawGrade.contains('LKG') ||
+            rawGrade.contains('Nursery'));
+
+    final classSec = json['class_section']?.toString() ??
+        (className != null && sectionName != null
+            ? '$className — $sectionName'
+            : (className ?? sectionName ?? (isGradeClass ? rawGrade : null)));
+
+    final gradeStr = isGradeClass
+        ? (gpaVal >= 3.6 ? 'A+' : (gpaVal >= 3.2 ? 'A' : (gpaVal >= 2.8 ? 'B+' : 'B')))
+        : (rawGrade ?? (gpaVal >= 3.6 ? 'A+' : (gpaVal >= 3.2 ? 'A' : (gpaVal >= 2.8 ? 'B+' : 'B'))));
+
+    String? rawPhoto = json['photo_url']?.toString() ?? json['avatar_url']?.toString() ?? json['photo']?.toString();
+    if (rawPhoto != null && rawPhoto.isNotEmpty && !rawPhoto.startsWith('http')) {
+      final baseOrigin = ApiService().baseUrl.replaceAll(RegExp(r'/api(/.*)?$'), '');
+      rawPhoto = '$baseOrigin/storage/${rawPhoto.replaceFirst(RegExp(r'^/?storage/'), '').replaceFirst(RegExp(r'^/'), '')}';
+    }
 
     return Student(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
@@ -134,7 +178,10 @@ class Student {
       phone: json['phone']?.toString(),
       sectionId: json['section_id'] is int ? json['section_id'] : int.tryParse(json['section_id']?.toString() ?? ''),
       classId: json['class_id'] is int ? json['class_id'] : int.tryParse(json['class_id']?.toString() ?? ''),
-      photoUrl: json['photo']?.toString() ?? json['photo_url']?.toString() ?? json['avatar_url']?.toString(),
+      className: className,
+      sectionName: sectionName,
+      classSection: classSec,
+      photoUrl: rawPhoto,
       parentName: json['parent_name']?.toString() ?? json['guardian_name']?.toString(),
       parentPhone: json['parent_phone']?.toString() ?? json['guardian_phone']?.toString() ?? json['phone']?.toString(),
     );
@@ -285,18 +332,18 @@ class AppData {
   ];
 
   static const List<Student> students = [
-    Student(name: 'Aayush Shrestha', grade: 'A+', avatar: 'AS', gpa: 4.0, attendance: 0.98, rank: 1, rollNo: '01', parentName: 'Hari Shrestha (Father)', parentPhone: '9841234567'),
-    Student(name: 'Sneha Adhikari', grade: 'A+', avatar: 'SA', gpa: 3.95, attendance: 0.95, rank: 2, rollNo: '02', parentName: 'Gita Adhikari (Mother)', parentPhone: '9851098765'),
-    Student(name: 'Bibek Thapa', grade: 'A', avatar: 'BT', gpa: 3.90, attendance: 0.92, rank: 3, rollNo: '03', parentName: 'Kamal Thapa (Father)', parentPhone: '9813456789'),
-    Student(name: 'Prashant Karki', grade: 'A', avatar: 'PK', gpa: 3.85, attendance: 0.90, rank: 4, rollNo: '04', parentName: 'Sita Karki (Mother)', parentPhone: '9801234567'),
-    Student(name: 'Pooja Sharma', grade: 'A', avatar: 'PS', gpa: 3.80, attendance: 0.88, rank: 5, rollNo: '05', parentName: 'Bishnu Sharma (Father)', parentPhone: '9849876543'),
-    Student(name: 'Rohan Gurung', grade: 'A-', avatar: 'RG', gpa: 3.75, attendance: 0.85, rank: 6, rollNo: '06', parentName: 'Maya Gurung (Mother)', parentPhone: '9860123456'),
-    Student(name: 'Anjali Tamang', grade: 'A-', avatar: 'AT', gpa: 3.72, attendance: 0.87, rank: 7, rollNo: '07', parentName: 'Dawa Tamang (Father)', parentPhone: '9818765432'),
-    Student(name: 'Sujan Maharjan', grade: 'B+', avatar: 'SM', gpa: 3.68, attendance: 0.80, rank: 8, rollNo: '08', parentName: 'Krishna Maharjan (Father)', parentPhone: '9841876543'),
-    Student(name: 'Bipana Rai', grade: 'B+', avatar: 'BR', gpa: 3.65, attendance: 0.82, rank: 9, rollNo: '09', parentName: 'Ramesh Rai (Father)', parentPhone: '9803456789'),
-    Student(name: 'Kushal Neupane', grade: 'B+', avatar: 'KN', gpa: 3.62, attendance: 0.78, rank: 10, rollNo: '10', parentName: 'Laxmi Neupane (Mother)', parentPhone: '9851123456'),
-    Student(name: 'Suman Dahal', grade: 'B', avatar: 'SD', gpa: 3.40, attendance: 0.75, rank: 11, rollNo: '11', parentName: 'Dipak Dahal (Father)', parentPhone: '9843210987'),
-    Student(name: 'Saroj Poudel', grade: 'B', avatar: 'SP', gpa: 3.30, attendance: 0.71, rank: 12, rollNo: '12', parentName: 'Prakash Poudel (Father)', parentPhone: '9861234567'),
+    Student(name: 'Aayush Shrestha', grade: 'A+', avatar: 'AS', gpa: 4.0, attendance: 0.98, rank: 1, rollNo: '01', parentName: 'Hari Shrestha (Father)', parentPhone: '9841234567', className: 'Class 1', sectionName: 'A', classSection: 'Class 1 — A'),
+    Student(name: 'Sneha Adhikari', grade: 'A+', avatar: 'SA', gpa: 3.95, attendance: 0.95, rank: 2, rollNo: '02', parentName: 'Gita Adhikari (Mother)', parentPhone: '9851098765', className: 'Class 1', sectionName: 'A', classSection: 'Class 1 — A'),
+    Student(name: 'Bibek Thapa', grade: 'A', avatar: 'BT', gpa: 3.90, attendance: 0.92, rank: 3, rollNo: '03', parentName: 'Kamal Thapa (Father)', parentPhone: '9813456789', className: 'Class 1', sectionName: 'A', classSection: 'Class 1 — A'),
+    Student(name: 'Prashant Karki', grade: 'A', avatar: 'PK', gpa: 3.85, attendance: 0.90, rank: 4, rollNo: '04', parentName: 'Sita Karki (Mother)', parentPhone: '9801234567', className: 'Class 1', sectionName: 'A', classSection: 'Class 1 — A'),
+    Student(name: 'Pooja Sharma', grade: 'A', avatar: 'PS', gpa: 3.80, attendance: 0.88, rank: 5, rollNo: '05', parentName: 'Bishnu Sharma (Father)', parentPhone: '9849876543', className: 'Class 2', sectionName: 'A', classSection: 'Class 2 — A'),
+    Student(name: 'Rohan Gurung', grade: 'A-', avatar: 'RG', gpa: 3.75, attendance: 0.85, rank: 6, rollNo: '06', parentName: 'Maya Gurung (Mother)', parentPhone: '9860123456', className: 'Class 2', sectionName: 'A', classSection: 'Class 2 — A'),
+    Student(name: 'Anjali Tamang', grade: 'A-', avatar: 'AT', gpa: 3.72, attendance: 0.87, rank: 7, rollNo: '07', parentName: 'Dawa Tamang (Father)', parentPhone: '9818765432', className: 'Class 2', sectionName: 'A', classSection: 'Class 2 — A'),
+    Student(name: 'Sujan Maharjan', grade: 'B+', avatar: 'SM', gpa: 3.68, attendance: 0.80, rank: 8, rollNo: '08', parentName: 'Krishna Maharjan (Father)', parentPhone: '9841876543', className: 'Class 2', sectionName: 'A', classSection: 'Class 2 — A'),
+    Student(name: 'Bipana Rai', grade: 'B+', avatar: 'BR', gpa: 3.65, attendance: 0.82, rank: 9, rollNo: '09', parentName: 'Ramesh Rai (Father)', parentPhone: '9803456789', className: 'UKG', sectionName: 'C', classSection: 'UKG — C'),
+    Student(name: 'Kushal Neupane', grade: 'B+', avatar: 'KN', gpa: 3.62, attendance: 0.78, rank: 10, rollNo: '10', parentName: 'Laxmi Neupane (Mother)', parentPhone: '9851123456', className: 'UKG', sectionName: 'C', classSection: 'UKG — C'),
+    Student(name: 'Suman Dahal', grade: 'B', avatar: 'SD', gpa: 3.40, attendance: 0.75, rank: 11, rollNo: '11', parentName: 'Dipak Dahal (Father)', parentPhone: '9843210987', className: 'UKG', sectionName: 'C', classSection: 'UKG — C'),
+    Student(name: 'Saroj Poudel', grade: 'B', avatar: 'SP', gpa: 3.30, attendance: 0.71, rank: 12, rollNo: '12', parentName: 'Prakash Poudel (Father)', parentPhone: '9861234567', className: 'UKG', sectionName: 'C', classSection: 'UKG — C'),
   ];
 
   static const List<TeacherAssignment> assignments = [

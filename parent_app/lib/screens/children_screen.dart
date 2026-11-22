@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../data/app_data.dart';
@@ -290,8 +289,24 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.school, color: Colors.white, size: 24),
-                      const SizedBox(width: 8),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: Image.asset(
+                            'assets/icons/icon.jpg',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.school, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           child.schoolName,

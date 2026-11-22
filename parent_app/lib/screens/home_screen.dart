@@ -299,12 +299,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.school_outlined,
-                                size: 14,
-                                color: Colors.white.withValues(alpha: 0.85),
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(5),
+                                  child: Image.asset(
+                                    'assets/icons/icon.jpg',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                      Icons.school_outlined,
+                                      size: 13,
+                                      color: Colors.white.withValues(alpha: 0.85),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   child.schoolName.isNotEmpty ? child.schoolName : 'Nepal School Hub Academy',
@@ -312,8 +328,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white.withValues(alpha: 0.95),
                                     letterSpacing: 0.2,
                                   ),
                                 ),
@@ -1029,64 +1045,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HeroStatItem extends StatelessWidget {
-  final String label, value;
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _HeroStatItem({
-    required this.label,
-    required this.value,
-    required this.icon,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusInner),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 14,
-                  color: AppTheme.primary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                    color: isDark ? Colors.white : AppTheme.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: isDark ? const Color(0xFF9CA3AF) : AppTheme.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 
 class _FintechStatTile extends StatelessWidget {

@@ -5,8 +5,8 @@ void main() {
   testWidgets('ParentsApp smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const ParentsApp());
     expect(find.byType(ParentsApp), findsOneWidget);
-    // Advance time past the splash screen timer (2.2 seconds)
-    await tester.pump(const Duration(seconds: 3));
-    await tester.pumpAndSettle();
+    // Advance time past initial render and animations
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(ParentsApp), findsOneWidget);
   });
 }

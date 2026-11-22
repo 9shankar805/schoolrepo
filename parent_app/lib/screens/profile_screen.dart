@@ -422,7 +422,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Nepal School Hub', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(9),
+                child: Image.asset(
+                  'assets/icons/icon.jpg',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, color: AppTheme.primary),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Nepal School Hub', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+            ),
+          ],
+        ),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,16 +533,19 @@ class _SettingsTile extends StatelessWidget {
     final c = color ?? Theme.of(context).textTheme.bodyLarge?.color;
     return Column(
       children: [
-        ListTile(
-          onTap: onTap,
-          leading: Icon(icon, color: c, size: 22),
-          title: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c)),
-          trailing: trailing ?? (value != null
-              ? Text(value!, style: const TextStyle(fontSize: 11, color: AppTheme.grey, fontWeight: FontWeight.w700))
-              : color == null
-                  ? const Icon(Icons.chevron_right, color: AppTheme.grey, size: 18)
-                  : null),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        Material(
+          color: Colors.transparent,
+          child: ListTile(
+            onTap: onTap,
+            leading: Icon(icon, color: c, size: 22),
+            title: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c)),
+            trailing: trailing ?? (value != null
+                ? Text(value!, style: const TextStyle(fontSize: 11, color: AppTheme.grey, fontWeight: FontWeight.w700))
+                : color == null
+                    ? const Icon(Icons.chevron_right, color: AppTheme.grey, size: 18)
+                    : null),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          ),
         ),
         if (showDivider) const Divider(height: 1, indent: 56, endIndent: 16),
       ],

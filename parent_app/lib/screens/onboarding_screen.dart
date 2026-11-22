@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
 
@@ -123,7 +122,29 @@ class _OnboardPage extends StatelessWidget {
                         decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.1),
                             shape: BoxShape.circle))),
-                  Icon(data.icon, size: 120, color: Colors.white.withValues(alpha: 0.9)),
+                  data.icon == Icons.family_restroom_rounded
+                      ? Container(
+                          width: 140,
+                          height: 140,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.25),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 3),
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/icons/icon.jpg',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(
+                                data.icon,
+                                size: 110,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                          ),
+                        )
+                      : Icon(data.icon, size: 120, color: Colors.white.withValues(alpha: 0.9)),
                 ],
               ),
             ),
