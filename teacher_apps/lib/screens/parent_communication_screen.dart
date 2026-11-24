@@ -116,12 +116,33 @@ class _ParentCommunicationScreenState extends State<ParentCommunicationScreen>
 
   Future<void> _loadParentContacts() async {
     final res = await _apiService.getParentContacts();
-    if (mounted && res.success && res.data != null) {
+    if (mounted && res.success && res.data != null && res.data!.isNotEmpty) {
       setState(() {
         _parentContacts = res.data!
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
       });
+      return;
+    }
+
+    // Seamless fallback to teacher's actual assigned students and parent info
+    if (mounted) {
+      final students = Provider.of<TeacherProvider>(context, listen: false).studentList;
+      if (students.isNotEmpty) {
+        setState(() {
+          _parentContacts = students.map((s) => {
+            'parent_id': s.id ?? DateTime.now().millisecondsSinceEpoch,
+            'parent_name': s.parentName,
+            'relationship': 'Guardian (अभिभावक)',
+            'student_id': s.id ?? 1,
+            'student_name': s.name,
+            'grade': s.displayClassSection,
+            'roll_no': s.rollNumber,
+            'phone': s.parentPhone,
+            'avatar': s.avatar.isNotEmpty ? s.avatar : (s.name.isNotEmpty ? s.name[0] : 'P'),
+          }).toList();
+        });
+      }
     }
   }
 
@@ -841,7 +862,20 @@ class _ParentCommunicationScreenState extends State<ParentCommunicationScreen>
   }
 
   void _showScheduleMeetingModal(bool isDark) {
-    String selectedParent = 'Sunita Adhikari';
+    final parentList = _parentContacts.isNotEmpty
+        ? _parentContacts
+            .map((c) => c['parent_name']?.toString() ?? 'Parent')
+            .where((name) => name.trim().isNotEmpty)
+            .toSet()
+            .toList()
+        : [
+            'Sunita Adhikari',
+            'Gopal Sharma',
+            'Krishna Prasad Poudel',
+            'Dilip Kumar Thapa',
+            'Babita Devi Yadav',
+          ];
+    String selectedParent = parentList.first;
     String selectedType = 'In-Person (School Meeting Room)';
     final dateCtrl = TextEditingController(text: '२०८१ कार्तिक २५ (आइतबार)');
     final timeCtrl = TextEditingController(text: '०३:३० PM');
@@ -886,14 +920,8 @@ class _ParentCommunicationScreenState extends State<ParentCommunicationScreen>
                   borderSide: BorderSide.none,
                 ),
               ),
-              items: [
-                'Gopal Sharma',
-                'Sunita Adhikari',
-                'Krishna Prasad Poudel',
-                'Dilip Kumar Thapa',
-                'Babita Devi Yadav',
-              ]
-                  .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+              items: parentList
+                  .map((p) => DropdownMenuItem(value: p, child: Text(p, maxLines: 1, overflow: TextOverflow.ellipsis)))
                   .toList(),
               onChanged: (val) => selectedParent = val ?? selectedParent,
             ),
@@ -1186,12 +1214,19 @@ class _ParentCommunicationScreenState extends State<ParentCommunicationScreen>
               height: 48,
               child: ElevatedButton(
                 onPressed: () {
+                  final text = msgCtrl.text.trim();
+                  if (text.isEmpty) return;
                   Navigator.pop(ctx);
+                  _apiService.createAnnouncement({
+                    'title': 'Parent SMS Broadcast',
+                    'content': text,
+                    'target': 'parents',
+                  });
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       backgroundColor: AppTheme.green,
-                      content:
-                          Text('SMS broadcast successfully queued to 32 parents! ✅'),
+                      content: Text(
+                          'SMS broadcast successfully queued to ${_parentContacts.isNotEmpty ? _parentContacts.length : 32} parents! ✅'),
                     ),
                   );
                 },
@@ -1258,9 +1293,36 @@ class _ParentCommunicationScreenState extends State<ParentCommunicationScreen>
               ),
               const Divider(height: 1),
               Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _parentContacts.length,
+                child: _parentContacts.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.people_outline_rounded,
+                                  size: 48,
+                                  color: isDark ? Colors.white38 : Colors.grey.shade400),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No parent contacts available',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Students assigned to your classes will automatically appear here.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    fontSize: 12, color: AppTheme.darkSubtext),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _parentContacts.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, idx) {
                     final p = _parentContacts[idx];

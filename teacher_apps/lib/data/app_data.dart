@@ -89,6 +89,8 @@ class Student {
   final String? sectionName;
   final String? classSection;
   final String? photoUrl;
+  final String? gender;
+  final String? address;
   final String? _parentName;
   final String? _parentPhone;
 
@@ -120,6 +122,8 @@ class Student {
     this.sectionName,
     this.classSection,
     this.photoUrl,
+    this.gender,
+    this.address,
     String? parentName,
     String? parentPhone,
   })  : _parentName = parentName,
@@ -182,6 +186,8 @@ class Student {
       sectionName: sectionName,
       classSection: classSec,
       photoUrl: rawPhoto,
+      gender: json['gender']?.toString(),
+      address: json['address']?.toString() ?? json['current_address']?.toString(),
       parentName: json['parent_name']?.toString() ?? json['guardian_name']?.toString(),
       parentPhone: json['parent_phone']?.toString() ?? json['guardian_phone']?.toString() ?? json['phone']?.toString(),
     );

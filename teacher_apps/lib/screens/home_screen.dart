@@ -1480,7 +1480,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'screen': const PayslipScreen(),
       },
       {
-        'label': 'Parent Chat',
+        'label': 'Parent Connect',
         'sub': 'Direct Messages',
         'image': 'assets/icons/3d/chat_bubble.png',
         'color': const Color(0xFFFCE7F3),

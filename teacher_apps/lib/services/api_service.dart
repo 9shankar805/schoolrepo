@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -119,7 +120,7 @@ class ApiService {
           'login': loginId,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 12));
+      ).timeout(const Duration(seconds: 25));
 
       dynamic data;
       try {
@@ -157,6 +158,12 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
+    } on TimeoutException {
+      return ApiResponse(
+        success: false,
+        message: 'Login timed out. The server took too long to respond. Please check your network and retry.',
+        statusCode: 408,
+      );
     } catch (e) {
       final errStr = e.toString();
       final isDnsFail = errStr.contains('Failed host lookup') || errStr.contains('SocketException');
@@ -208,6 +215,12 @@ class ApiService {
         message: data['message'] ?? 'Reset instructions sent',
         data: data,
         statusCode: res.statusCode,
+      );
+    } on TimeoutException {
+      return ApiResponse(
+        success: false,
+        message: 'Password reset request timed out. Please check your network and retry.',
+        statusCode: 408,
       );
     } catch (e) {
       return ApiResponse(success: false, message: '$e', statusCode: 500);
@@ -332,6 +345,11 @@ class ApiService {
 
   Future<ApiResponse<Map<String, dynamic>>> getAttendanceByDate(String classId, String date) async {
     return _get<Map<String, dynamic>>('$_baseUrl/attendance/$classId/date/$date');
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> getAnnualClassAttendance(String classId, {String? sectionId}) async {
+    final query = (sectionId != null && sectionId.isNotEmpty) ? '?section_id=$sectionId' : '';
+    return _get<Map<String, dynamic>>('$_baseUrl/attendance/$classId/annual$query');
   }
 
   Future<ApiResponse<dynamic>> submitAttendance(String classId, Map<String, dynamic> payload) async {
@@ -506,9 +524,17 @@ class ApiService {
   }
 
   Future<ApiResponse<dynamic>> submitExamMarks(String examId, Map<String, dynamic> marksData) async {
-    final res = await _post('$_baseUrl/exams/marks', marksData);
+    final res = await _post(
+      '$_baseUrl/exams/marks',
+      marksData,
+      timeout: const Duration(seconds: 60),
+    );
     if (!res.success && (res.statusCode == 404 || res.statusCode == 405)) {
-      return _put('$_baseUrl/exams/$examId/marks', marksData);
+      return _put(
+        '$_baseUrl/exams/$examId/marks',
+        marksData,
+        timeout: const Duration(seconds: 60),
+      );
     }
     return res;
   }
@@ -730,7 +756,7 @@ class ApiService {
   // GENERIC HTTP HELPERS
   // ==========================================
 
-  Future<ApiResponse<T>> _get<T>(String url) async {
+  Future<ApiResponse<T>> _get<T>(String url, {Duration? timeout}) async {
     if (isSessionExpired()) {
       await logout();
       onSessionExpired?.call();
@@ -745,7 +771,7 @@ class ApiService {
       final response = await http.get(
         Uri.parse(url),
         headers: _headers(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(timeout ?? const Duration(seconds: 30));
 
       if (response.statusCode == 401) {
         await logout();
@@ -833,16 +859,26 @@ class ApiService {
         data: isSuccess ? payload as T? : null,
         statusCode: response.statusCode,
       );
-    } catch (e) {
+    } on TimeoutException {
       return ApiResponse<T>(
         success: false,
-        message: 'Request error: $e',
+        message: 'Connection timed out. Please check your network and try again.',
+        statusCode: 408,
+      );
+    } catch (e) {
+      final errStr = e.toString();
+      final isDnsFail = errStr.contains('Failed host lookup') || errStr.contains('SocketException');
+      return ApiResponse<T>(
+        success: false,
+        message: isDnsFail
+            ? 'Network error: Unable to reach school server. Please verify your connection.'
+            : 'Request error: $e',
         statusCode: 500,
       );
     }
   }
 
-  Future<ApiResponse<dynamic>> _post(String url, Map<String, dynamic> body) async {
+  Future<ApiResponse<dynamic>> _post(String url, Map<String, dynamic> body, {Duration? timeout}) async {
     if (isSessionExpired()) {
       await logout();
       onSessionExpired?.call();
@@ -858,7 +894,7 @@ class ApiService {
         Uri.parse(url),
         headers: _headers(),
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 12));
+      ).timeout(timeout ?? const Duration(seconds: 30));
 
       if (response.statusCode == 401) {
         await logout();
@@ -874,16 +910,26 @@ class ApiService {
         data: data,
         statusCode: response.statusCode,
       );
-    } catch (e) {
+    } on TimeoutException {
       return ApiResponse(
         success: false,
-        message: 'Post error: $e',
+        message: 'Connection timed out while contacting server. Please check your internet connection or retry.',
+        statusCode: 408,
+      );
+    } catch (e) {
+      final errStr = e.toString();
+      final isDnsFail = errStr.contains('Failed host lookup') || errStr.contains('SocketException');
+      return ApiResponse(
+        success: false,
+        message: isDnsFail
+            ? 'Network error: Unable to reach school server. Please verify your connection.'
+            : 'Post error: $e',
         statusCode: 500,
       );
     }
   }
 
-  Future<ApiResponse<dynamic>> _put(String url, Map<String, dynamic> body) async {
+  Future<ApiResponse<dynamic>> _put(String url, Map<String, dynamic> body, {Duration? timeout}) async {
     if (isSessionExpired()) {
       await logout();
       onSessionExpired?.call();
@@ -899,7 +945,7 @@ class ApiService {
         Uri.parse(url),
         headers: _headers(),
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(timeout ?? const Duration(seconds: 30));
 
       if (response.statusCode == 401) {
         await logout();
@@ -915,16 +961,26 @@ class ApiService {
         data: data,
         statusCode: response.statusCode,
       );
-    } catch (e) {
+    } on TimeoutException {
       return ApiResponse(
         success: false,
-        message: 'Put error: $e',
+        message: 'Connection timed out while updating records. Please try again.',
+        statusCode: 408,
+      );
+    } catch (e) {
+      final errStr = e.toString();
+      final isDnsFail = errStr.contains('Failed host lookup') || errStr.contains('SocketException');
+      return ApiResponse(
+        success: false,
+        message: isDnsFail
+            ? 'Network error: Unable to reach school server. Please verify your connection.'
+            : 'Put error: $e',
         statusCode: 500,
       );
     }
   }
 
-  Future<ApiResponse<dynamic>> _delete(String url) async {
+  Future<ApiResponse<dynamic>> _delete(String url, {Duration? timeout}) async {
     if (isSessionExpired()) {
       await logout();
       onSessionExpired?.call();
@@ -939,7 +995,7 @@ class ApiService {
       final response = await http.delete(
         Uri.parse(url),
         headers: _headers(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(timeout ?? const Duration(seconds: 30));
 
       if (response.statusCode == 401) {
         await logout();
@@ -960,10 +1016,20 @@ class ApiService {
         data: data,
         statusCode: response.statusCode,
       );
-    } catch (e) {
+    } on TimeoutException {
       return ApiResponse(
         success: false,
-        message: 'Delete error: $e',
+        message: 'Connection timed out. Please try again.',
+        statusCode: 408,
+      );
+    } catch (e) {
+      final errStr = e.toString();
+      final isDnsFail = errStr.contains('Failed host lookup') || errStr.contains('SocketException');
+      return ApiResponse(
+        success: false,
+        message: isDnsFail
+            ? 'Network error: Unable to reach school server. Please verify your connection.'
+            : 'Delete error: $e',
         statusCode: 500,
       );
     }

@@ -1964,16 +1964,53 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
             ),
           ],
         ),
-        content: Text(
-          res.success
-              ? (res.message.isNotEmpty
-                  ? res.message
-                  : 'All grade records for $_selectedClass have been saved to the school master database.')
-              : (res.message.isNotEmpty
-                  ? res.message
-                  : 'Failed to record marks on the school server. Please check connection and try again.'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              res.success
+                  ? (res.message.isNotEmpty
+                      ? res.message
+                      : 'All grade records for $_selectedClass have been saved to the school master database.')
+                  : (res.message.isNotEmpty
+                      ? res.message
+                      : 'Failed to record marks on the school server. Please check connection and try again.'),
+            ),
+            if (!res.success) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green.withOpacity(0.2)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: Colors.green, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Your entered marks are safely stored on this device.',
+                        style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
+          if (!res.success)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _saveMarks();
+              },
+              child: const Text('Retry Save', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: res.success ? AppTheme.primary : Colors.grey,

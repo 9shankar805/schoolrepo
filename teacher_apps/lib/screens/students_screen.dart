@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../data/app_data.dart';
 import '../widgets/common_widgets.dart';
@@ -98,6 +101,29 @@ class _StudentsScreenState extends State<StudentsScreen> {
     if (g.startsWith('B')) return AppTheme.blue;
     if (g.startsWith('C')) return AppTheme.orange;
     return AppTheme.red;
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppTheme.darkSubtext),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkSubtext),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -345,12 +371,49 @@ class StudentDetailScreen extends StatelessWidget {
     return AppTheme.red;
   }
 
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppTheme.darkSubtext),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkSubtext),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showEditStudentModal(BuildContext context, Student student) {
     final nameCtrl = TextEditingController(text: student.name);
     final rollCtrl = TextEditingController(text: student.rollNo);
+    final phoneCtrl = TextEditingController(text: student.phone ?? '');
+    final emailCtrl = TextEditingController(text: student.email ?? '');
+    final addressCtrl = TextEditingController(text: student.address ?? '');
     final parentCtrl = TextEditingController(text: student.parentName);
-    final phoneCtrl = TextEditingController(text: student.parentPhone);
-    final photoCtrl = TextEditingController(text: student.photoUrl ?? '');
+    final parentPhoneCtrl = TextEditingController(text: student.parentPhone);
+
+    String selectedGender = (student.gender != null && student.gender!.isNotEmpty)
+        ? student.gender!.toLowerCase()
+        : 'male';
+    if (selectedGender != 'male' && selectedGender != 'female' && selectedGender != 'other') {
+      selectedGender = 'male';
+    }
+
+    Uint8List? pickedImageBytes;
+    String? pickedBase64Data;
+    String? pickedFileName;
+    bool photoRemoved = false;
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -361,7 +424,112 @@ class StudentDetailScreen extends StatelessWidget {
         builder: (ctx, setModalState) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
 
+          Future<void> pickImage(ImageSource source) async {
+            try {
+              final picker = ImagePicker();
+              final picked = await picker.pickImage(
+                source: source,
+                maxWidth: 1024,
+                maxHeight: 1024,
+                imageQuality: 85,
+              );
+              if (picked != null) {
+                final bytes = await picked.readAsBytes();
+                final ext = picked.name.split('.').last.toLowerCase();
+                final mime = (ext == 'png') ? 'image/png' : 'image/jpeg';
+                final b64 = 'data:$mime;base64,${base64Encode(bytes)}';
+
+                setModalState(() {
+                  pickedImageBytes = bytes;
+                  pickedBase64Data = b64;
+                  pickedFileName = picked.name;
+                  photoRemoved = false;
+                });
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: AppTheme.red,
+                    content: Text('Failed to pick image: $e'),
+                  ),
+                );
+              }
+            }
+          }
+
+          void showImageSourcePicker() {
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: Colors.transparent,
+              builder: (pickerCtx) => Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      'Select Student Photo',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.photo_library_rounded, color: AppTheme.primary),
+                      ),
+                      title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: const Text('Select existing photo from device album', style: TextStyle(fontSize: 11)),
+                      onTap: () {
+                        Navigator.pop(pickerCtx);
+                        pickImage(ImageSource.gallery);
+                      },
+                    ),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.green.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt_rounded, color: AppTheme.green),
+                      ),
+                      title: const Text('Take Photo with Camera', style: TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: const Text('Capture new photo right now', style: TextStyle(fontSize: 11)),
+                      onTap: () {
+                        Navigator.pop(pickerCtx);
+                        pickImage(ImageSource.camera);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+            ),
             padding: EdgeInsets.fromLTRB(
               20,
               16,
@@ -388,7 +556,7 @@ class StudentDetailScreen extends StatelessWidget {
                     child: Container(
                       width: 40,
                       height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
+                      margin: const EdgeInsets.only(bottom: 14),
                       decoration: BoxDecoration(
                         color: Colors.grey.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(10),
@@ -427,9 +595,181 @@ class StudentDetailScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const Divider(height: 20),
+                  const Divider(height: 16),
 
-                  // Roll No & Name
+                  // Avatar & Image Picker Controls
+                  Center(
+                    child: Column(
+                      children: [
+                        Stack(
+                          children: [
+                            Container(
+                              width: 96,
+                              height: 96,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppTheme.primary.withOpacity(0.35),
+                                  width: 2.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: pickedImageBytes != null
+                                    ? Image.memory(
+                                        pickedImageBytes!,
+                                        width: 96,
+                                        height: 96,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : (!photoRemoved && student.photoUrl != null && student.photoUrl!.isNotEmpty)
+                                        ? CachedNetworkImage(
+                                            imageUrl: student.photoUrl!,
+                                            width: 96,
+                                            height: 96,
+                                            fit: BoxFit.cover,
+                                            placeholder: (_, __) => const Center(
+                                              child: SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(strokeWidth: 2),
+                                              ),
+                                            ),
+                                            errorWidget: (_, __, ___) => Container(
+                                              color: AppTheme.primary.withOpacity(0.1),
+                                              child: Center(
+                                                child: Text(
+                                                  student.avatar,
+                                                  style: const TextStyle(
+                                                    color: AppTheme.primary,
+                                                    fontSize: 26,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                        : Container(
+                                            decoration: const BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [AppTheme.primary, AppTheme.accent],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                student.avatar,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 28,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: showImageSourcePicker,
+                                child: Container(
+                                  padding: const EdgeInsets.all(7),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isDark ? AppTheme.darkCard : Colors.white,
+                                      width: 2.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.photo_library_rounded, size: 15),
+                              label: const Text('Gallery', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                              onPressed: () => pickImage(ImageSource.gallery),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.camera_alt_rounded, size: 15),
+                              label: const Text('Camera', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                              onPressed: () => pickImage(ImageSource.camera),
+                            ),
+                            if (pickedImageBytes != null || (!photoRemoved && student.photoUrl != null && student.photoUrl!.isNotEmpty)) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.red, size: 20),
+                                tooltip: 'Remove photo',
+                                onPressed: () {
+                                  setModalState(() {
+                                    pickedImageBytes = null;
+                                    pickedBase64Data = null;
+                                    pickedFileName = null;
+                                    photoRemoved = true;
+                                  });
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppTheme.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.green.withOpacity(0.25)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.auto_awesome_rounded, color: AppTheme.green, size: 14),
+                              SizedBox(width: 6),
+                              Text(
+                                'Auto-converts to WebP for fast lightweight storage',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.green),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Roll No & Full Name
                   Row(
                     children: [
                       SizedBox(
@@ -456,7 +796,7 @@ class StudentDetailScreen extends StatelessWidget {
                         child: TextField(
                           controller: nameCtrl,
                           decoration: InputDecoration(
-                            labelText: 'Student Full Name',
+                            labelText: 'Student Full Name *',
                             labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
                             prefixIcon: const Icon(Icons.person_rounded, size: 16),
                             filled: true,
@@ -473,13 +813,142 @@ class StudentDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Parent / Guardian Name
+                  // Gender Selection
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Gender',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ChoiceChip(
+                              avatar: const Icon(Icons.male_rounded, size: 16),
+                              label: const Center(child: Text('Male')),
+                              selected: selectedGender == 'male',
+                              selectedColor: AppTheme.blue.withOpacity(0.2),
+                              onSelected: (val) {
+                                if (val) setModalState(() => selectedGender = 'male');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ChoiceChip(
+                              avatar: const Icon(Icons.female_rounded, size: 16),
+                              label: const Center(child: Text('Female')),
+                              selected: selectedGender == 'female',
+                              selectedColor: AppTheme.pink.withOpacity(0.2),
+                              onSelected: (val) {
+                                if (val) setModalState(() => selectedGender = 'female');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ChoiceChip(
+                              avatar: const Icon(Icons.transgender_rounded, size: 16),
+                              label: const Center(child: Text('Other')),
+                              selected: selectedGender == 'other',
+                              selectedColor: AppTheme.purple.withOpacity(0.2),
+                              onSelected: (val) {
+                                if (val) setModalState(() => selectedGender = 'other');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Student Contact Information (Phone & Email)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'Student Phone',
+                            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                            prefixIcon: const Icon(Icons.phone_android_rounded, size: 16),
+                            filled: true,
+                            fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: 'Student Email',
+                            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                            prefixIcon: const Icon(Icons.email_outlined, size: 16),
+                            filled: true,
+                            fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Residential Address
+                  TextField(
+                    controller: addressCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Current Address / Residence',
+                      labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      prefixIcon: const Icon(Icons.location_on_outlined, size: 16),
+                      hintText: 'e.g. Ward No. 3, Siraha, Nepal',
+                      hintStyle: const TextStyle(fontSize: 11, color: AppTheme.grey),
+                      filled: true,
+                      fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Parent / Guardian Section
+                  Row(
+                    children: [
+                      Icon(Icons.family_restroom_rounded, size: 18, color: AppTheme.primary.withOpacity(0.8)),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Parent / Guardian Details',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Parent Name
                   TextField(
                     controller: parentCtrl,
                     decoration: InputDecoration(
-                      labelText: 'Parent / Guardian Name',
+                      labelText: 'Parent / Guardian Full Name',
                       labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      prefixIcon: const Icon(Icons.escalator_warning_rounded, size: 16),
+                      prefixIcon: const Icon(Icons.person_outline_rounded, size: 16),
                       filled: true,
                       fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
                       border: OutlineInputBorder(
@@ -491,9 +960,9 @@ class StudentDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Parent Phone Number
+                  // Parent Phone
                   TextField(
-                    controller: phoneCtrl,
+                    controller: parentPhoneCtrl,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
                       labelText: 'Parent Mobile Phone',
@@ -508,52 +977,29 @@ class StudentDetailScreen extends StatelessWidget {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                   ),
-                  const SizedBox(height: 12),
-
-                  // Student Photo URL / Image Link
-                  TextField(
-                    controller: photoCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Student Photo (Image Link / URL)',
-                      labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      prefixIcon: const Icon(Icons.photo_camera_back_rounded, size: 16),
-                      suffixIcon: photoCtrl.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 16),
-                              onPressed: () => setModalState(() => photoCtrl.clear()),
-                            )
-                          : null,
-                      hintText: 'Auto-converts to optimized WebP',
-                      hintStyle: const TextStyle(fontSize: 11, color: AppTheme.grey),
-                      filled: true,
-                      fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
 
                   // Save Button
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 3,
                       ),
                       onPressed: isSaving
                           ? null
                           : () async {
                               final newName = nameCtrl.text.trim();
                               final newRoll = rollCtrl.text.trim();
-                              final newParent = parentCtrl.text.trim();
                               final newPhone = phoneCtrl.text.trim();
-                              final newPhoto = photoCtrl.text.trim();
+                              final newEmail = emailCtrl.text.trim();
+                              final newAddress = addressCtrl.text.trim();
+                              final newParent = parentCtrl.text.trim();
+                              final newParentPhone = parentPhoneCtrl.text.trim();
 
                               if (newName.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -569,12 +1015,22 @@ class StudentDetailScreen extends StatelessWidget {
                                   final updatePayload = <String, dynamic>{
                                     'name': newName,
                                     'roll_no': newRoll,
+                                    'gender': selectedGender,
+                                    'phone': newPhone,
+                                    'email': newEmail,
+                                    'address': newAddress,
                                     'parent_name': newParent,
-                                    'parent_phone': newPhone,
+                                    'parent_phone': newParentPhone,
+                                    'father_name': newParent,
+                                    'father_phone': newParentPhone,
                                   };
-                                  if (newPhoto.isNotEmpty) {
-                                    updatePayload['photo'] = newPhoto;
-                                    updatePayload['photo_url'] = newPhoto;
+
+                                  if (pickedBase64Data != null) {
+                                    updatePayload['photo'] = pickedBase64Data;
+                                    updatePayload['image'] = pickedBase64Data;
+                                  } else if (photoRemoved) {
+                                    updatePayload['photo'] = '';
+                                    updatePayload['photo_url'] = '';
                                   }
 
                                   final res = await ApiService().updateStudent(
@@ -603,11 +1059,20 @@ class StudentDetailScreen extends StatelessWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       backgroundColor: AppTheme.green,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                       content: Row(
                                         children: [
-                                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                                          const SizedBox(width: 8),
-                                          Text('Details for "$newName" updated successfully!'),
+                                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              pickedBase64Data != null
+                                                  ? 'Student "$newName" details & WebP photo updated!'
+                                                  : 'Student "$newName" details updated successfully!',
+                                              style: const TextStyle(fontWeight: FontWeight.w700),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -649,10 +1114,14 @@ class StudentDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _gradeColor(student.grade);
+    final liveStudent = Provider.of<TeacherProvider>(context).studentList.firstWhere(
+          (s) => s.id != null && s.id == student.id,
+          orElse: () => student,
+        );
+    final color = _gradeColor(liveStudent.grade);
     return Scaffold(
       appBar: AppBar(
-        title: Text(student.name),
+        title: Text(liveStudent.name),
         leading: CircleIconButton(
             icon: Icons.arrow_back_ios_new,
             onTap: () => Navigator.pop(context), size: 38),
@@ -661,7 +1130,7 @@ class StudentDetailScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.edit_note_rounded, size: 24, color: AppTheme.primary),
             tooltip: 'Edit Student Details',
-            onPressed: () => _showEditStudentModal(context, student),
+            onPressed: () => _showEditStudentModal(context, liveStudent),
           ),
           const SizedBox(width: 8),
         ],
@@ -672,10 +1141,10 @@ class StudentDetailScreen extends StatelessWidget {
           GradientCard(
             colors: [color, color.withOpacity(0.6)],
             child: Row(children: [
-              student.photoUrl != null && student.photoUrl!.isNotEmpty
+              liveStudent.photoUrl != null && liveStudent.photoUrl!.isNotEmpty
                   ? ClipOval(
                       child: CachedNetworkImage(
-                        imageUrl: student.photoUrl!,
+                        imageUrl: liveStudent.photoUrl!,
                         width: 72,
                         height: 72,
                         fit: BoxFit.cover,
@@ -703,7 +1172,7 @@ class StudentDetailScreen extends StatelessWidget {
                           ),
                           child: Center(
                             child: Text(
-                              student.avatar,
+                              liveStudent.avatar,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 28,
@@ -723,7 +1192,7 @@ class StudentDetailScreen extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          student.avatar,
+                          liveStudent.avatar,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 28,
@@ -734,22 +1203,69 @@ class StudentDetailScreen extends StatelessWidget {
                     ),
               const SizedBox(width: 16),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(student.name, style: const TextStyle(
+                Text(liveStudent.name, style: const TextStyle(
                     color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
-                Text('Rank #${student.rank}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                Text('Roll #${liveStudent.rollNo} • ${liveStudent.displayClassSection}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
                 Row(children: [
-                  _InfoChip(label: 'GPA', value: student.gpa.toStringAsFixed(2)),
+                  _InfoChip(label: 'GPA', value: liveStudent.gpa.toStringAsFixed(2)),
                   const SizedBox(width: 8),
                   _InfoChip(label: 'Attendance',
-                      value: '${(student.attendance * 100).toInt()}%'),
+                      value: '${(liveStudent.attendance * 100).toInt()}%'),
                   const SizedBox(width: 8),
-                  _InfoChip(label: 'Grade', value: student.grade),
+                  _InfoChip(label: 'Grade', value: liveStudent.grade),
                 ]),
               ])),
             ]),
+          ),
+          const SizedBox(height: 16),
+
+          // Student & Parent Details Card
+          AppCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Student Information',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                    ),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                      onPressed: () => _showEditStudentModal(context, liveStudent),
+                      icon: const Icon(Icons.edit_rounded, size: 14, color: AppTheme.primary),
+                      label: const Text('Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                    ),
+                  ],
+                ),
+                const Divider(height: 14),
+                _detailRow(Icons.numbers_rounded, 'Roll Number', liveStudent.rollNo),
+                if (liveStudent.gender != null && liveStudent.gender!.isNotEmpty)
+                  _detailRow(Icons.person_pin_rounded, 'Gender', liveStudent.gender!.toUpperCase()),
+                if (liveStudent.phone != null && liveStudent.phone!.isNotEmpty)
+                  _detailRow(Icons.phone_android_rounded, 'Student Phone', liveStudent.phone!),
+                if (liveStudent.email != null && liveStudent.email!.isNotEmpty)
+                  _detailRow(Icons.email_outlined, 'Student Email', liveStudent.email!),
+                if (liveStudent.address != null && liveStudent.address!.isNotEmpty)
+                  _detailRow(Icons.location_on_outlined, 'Residence', liveStudent.address!),
+                const SizedBox(height: 8),
+                const Text(
+                  'Parent / Guardian',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppTheme.darkSubtext),
+                ),
+                const SizedBox(height: 6),
+                _detailRow(Icons.family_restroom_rounded, 'Guardian Name', liveStudent.parentName),
+                _detailRow(Icons.phone_rounded, 'Guardian Phone', liveStudent.parentPhone),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
           const SectionHeader(title: 'Performance Overview'),
