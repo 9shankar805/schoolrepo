@@ -684,7 +684,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _buildVedaStatCard(
             title: 'Classes',
-            value: '${stats['classes_count'] ?? 4}',
+            value: '${teacher.classesCount}',
             imageAsset: 'assets/icons/3d/my_classes.png',
             fallbackIcon: Icons.menu_book_rounded,
             color: const Color(0xFF2563EB),
@@ -695,7 +695,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 8),
           _buildVedaStatCard(
             title: 'Students',
-            value: '${stats['students_count'] ?? 115}',
+            value: '${teacher.studentsCount}',
             imageAsset: 'assets/icons/3d/student_info.png',
             fallbackIcon: Icons.groups_rounded,
             color: const Color(0xFF059669),

@@ -1114,8 +1114,14 @@ class StudentDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dynamic currentStudentId = (student as dynamic) is Student
+        ? student.id
+        : ((student as dynamic) is Map ? ((student as dynamic)['id'] ?? (student as dynamic)['student_id']) : null);
     final liveStudent = Provider.of<TeacherProvider>(context).studentList.firstWhere(
-          (s) => s.id != null && s.id == student.id,
+          (s) {
+            final dynamic sid = (s as dynamic) is Student ? s.id : ((s as dynamic) is Map ? ((s as dynamic)['id'] ?? (s as dynamic)['student_id']) : null);
+            return sid != null && currentStudentId != null && sid == currentStudentId;
+          },
           orElse: () => student,
         );
     final color = _gradeColor(liveStudent.grade);

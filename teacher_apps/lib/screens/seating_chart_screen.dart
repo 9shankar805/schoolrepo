@@ -478,7 +478,8 @@ class _SeatingChartScreenState extends State<SeatingChartScreen> {
     }).toList();
     final activeStudents = classStudents.isNotEmpty ? classStudents : allStudents;
 
-    final currentKey = '${cls.classId ?? cls.id}_${activeStudents.length}';
+    final dynamic cIdVal = cls.classId ?? cls.id;
+    final currentKey = '${cIdVal ?? 1}_${activeStudents.length}';
     if (_loadedClassKey != currentKey) {
       _loadedClassKey = currentKey;
       _generateBenchLayout(activeStudents);

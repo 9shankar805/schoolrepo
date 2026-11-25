@@ -388,7 +388,8 @@ class _ClassesScreenState extends State<ClassesScreen>
       return true;
     }).toList();
 
-    final totalStudents = classList.fold<int>(0, (sum, c) => sum + c.students);
+    final teacher = Provider.of<TeacherProvider>(context);
+    final totalStudents = teacher.studentsCount;
     final ongoingCount = classList.where((c) => c.isOngoing).length;
 
     // Calculate unique sections

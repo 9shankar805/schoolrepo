@@ -771,7 +771,7 @@ class ApiService {
       final response = await http.get(
         Uri.parse(url),
         headers: _headers(),
-      ).timeout(timeout ?? const Duration(seconds: 30));
+      ).timeout(timeout ?? const Duration(seconds: 60));
 
       if (response.statusCode == 401) {
         await logout();
@@ -894,7 +894,7 @@ class ApiService {
         Uri.parse(url),
         headers: _headers(),
         body: jsonEncode(body),
-      ).timeout(timeout ?? const Duration(seconds: 30));
+      ).timeout(timeout ?? const Duration(seconds: 60));
 
       if (response.statusCode == 401) {
         await logout();
@@ -945,7 +945,7 @@ class ApiService {
         Uri.parse(url),
         headers: _headers(),
         body: jsonEncode(body),
-      ).timeout(timeout ?? const Duration(seconds: 30));
+      ).timeout(timeout ?? const Duration(seconds: 60));
 
       if (response.statusCode == 401) {
         await logout();
@@ -995,7 +995,7 @@ class ApiService {
       final response = await http.delete(
         Uri.parse(url),
         headers: _headers(),
-      ).timeout(timeout ?? const Duration(seconds: 30));
+      ).timeout(timeout ?? const Duration(seconds: 60));
 
       if (response.statusCode == 401) {
         await logout();

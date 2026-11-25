@@ -27,7 +27,7 @@ class TeacherProvider extends ChangeNotifier {
 
   Map<String, dynamic> get stats => _stats;
   List<dynamic> get classes => _classes;
-  List<dynamic> get students => _students;
+  List<Student> get students => studentList;
   List<dynamic> get assignments => _assignments;
   List<dynamic> get exams => _exams;
   List<dynamic> get notifications => _notifications;
@@ -136,22 +136,22 @@ class TeacherProvider extends ChangeNotifier {
 
   int get classesCount {
     final val = _stats['total_classes'] ?? _stats['classes_count'];
-    if (val is int) return val;
+    if (val is int && val > 0) return val;
     if (val != null) {
       final p = int.tryParse(val.toString());
-      if (p != null) return p;
+      if (p != null && p > 0) return p;
     }
-    return _classes.isNotEmpty ? _classes.length : 0;
+    return teacherClasses.length;
   }
 
   int get studentsCount {
     final val = _stats['total_students'] ?? _stats['students_count'];
-    if (val is int) return val;
+    if (val is int && val > 0) return val;
     if (val != null) {
       final p = int.tryParse(val.toString());
-      if (p != null) return p;
+      if (p != null && p > 0) return p;
     }
-    return _students.isNotEmpty ? _students.length : 0;
+    return studentList.length;
   }
 
   int get pendingAssignmentsCount {

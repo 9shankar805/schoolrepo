@@ -114,6 +114,18 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
+  bool get isPrincipalRole {
+    final roles = _teacherProfile?['roles'];
+    if (roles is List) {
+      return roles.any((r) => [
+            'principal',
+            'vice-principal',
+            'academic-coordinator'
+          ].contains(r.toString().toLowerCase().trim()));
+    }
+    return false;
+  }
+
   bool get isClassTeacherRole {
     final roles = _teacherProfile?['roles'];
     if (roles is List) {

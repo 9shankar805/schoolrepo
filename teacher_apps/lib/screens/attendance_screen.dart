@@ -5,6 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/teacher_provider.dart';
+import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../data/app_data.dart';
 import '../widgets/common_widgets.dart';
@@ -168,7 +169,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
           setState(() {
             for (int i = 0; i < activeStudents.length; i++) {
-              final sId = activeStudents[i].id;
+              final dynamic st = activeStudents[i];
+              final dynamic rawId = st is Student ? st.id : (st is Map ? (st['id'] ?? st['student_id']) : null);
+              final sId = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
               if (sId != null && statusMap.containsKey(sId)) {
                 _status[i] = statusMap[sId]!;
                 if (remarkMap.containsKey(sId)) {
@@ -189,10 +192,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (activeStudents.isEmpty) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
-    final classesList = teacherProvider.teacherClasses;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final inChargeClasses = teacherProvider.teacherClasses.where((c) => c.isClassTeacher).toList();
+    final classesList = (authProvider.isAdminRole || (inChargeClasses.isEmpty && authProvider.isPrincipalRole))
+        ? teacherProvider.teacherClasses
+        : inChargeClasses;
     final cls = classesList.isNotEmpty && _selectedClass < classesList.length
         ? classesList[_selectedClass]
-        : AppData.classes.first;
+        : (classesList.isNotEmpty ? classesList.first : AppData.classes.first);
 
     int currentIndex = initialIndex.clamp(0, activeStudents.length - 1);
     bool autoAdvance = true;
@@ -1577,7 +1584,68 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final teacherProvider = Provider.of<TeacherProvider>(context);
-    final classesList = teacherProvider.teacherClasses;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final allTeacherClasses = teacherProvider.teacherClasses;
+    final inChargeClasses = allTeacherClasses.where((c) => c.isClassTeacher).toList();
+    final classesList = (authProvider.isAdminRole || (inChargeClasses.isEmpty && authProvider.isPrincipalRole))
+        ? allTeacherClasses
+        : inChargeClasses;
+
+    if (classesList.isEmpty) {
+      return Scaffold(
+        backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
+        appBar: AppBar(
+          title: const Text('कक्षा हाजिरी (Attendance)'),
+          leading: CircleIconButton(
+            icon: Icons.arrow_back_ios_new,
+            onTap: () => Navigator.pop(context),
+            size: 38,
+          ),
+          leadingWidth: 60,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.orange.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.assignment_late_rounded, size: 54, color: AppTheme.orange),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'कक्षा शिक्षक अधिकार आवश्यक',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'तपाईं हाल कुनै कक्षाको कक्षा शिक्षक (Class Teacher) तोकिनुभएको छैन।\nविद्यार्थी दैनिक हाजिरी सम्बन्धित कक्षा शिक्षकद्वारा मात्र लिइन्छ।',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: AppTheme.grey, height: 1.5),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: const Text('गृहपृष्ठमा फर्कनुहोस् (Back to Home)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     if (_selectedClass >= classesList.length && classesList.isNotEmpty) {
       _selectedClass = 0;
@@ -1587,7 +1655,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ? classesList[_selectedClass]
         : AppData.classes.first;
 
-    // Filter students belonging to this class/section if meta available, or all teacher students
+    // Filter students belonging to this class/section strictly
     final allStudents = teacherProvider.studentList;
     final classStudents = allStudents.where((s) {
       if (cls.classId != null && s.classId != null && s.classId != cls.classId) {
@@ -1599,14 +1667,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return true;
     }).toList();
 
-    final activeStudents = classStudents.isNotEmpty ? classStudents : allStudents;
+    final activeStudents = classStudents;
 
-    final currentKey = '${cls.classId ?? cls.id}_${activeStudents.length}';
+    final dynamic currentClassId = cls.classId ?? cls.id;
+    final currentKey = '${currentClassId}_${activeStudents.length}';
     if (_lastLoadedClassKey != currentKey) {
       _lastLoadedClassKey = currentKey;
       _status = List.filled(activeStudents.length, 0);
       _remarks = List.filled(activeStudents.length, null);
-      final cId = '${cls.classId ?? cls.id ?? 1}';
+      final cId = '${currentClassId ?? 1}';
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadServerAttendance(cId, activeStudents);
       });
@@ -2791,17 +2860,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   void _showRemarkDialog(int studentIdx) {
     final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
-    final classesList = teacherProvider.teacherClasses;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final inChargeClasses = teacherProvider.teacherClasses.where((c) => c.isClassTeacher).toList();
+    final classesList = (authProvider.isAdminRole || (inChargeClasses.isEmpty && authProvider.isPrincipalRole))
+        ? teacherProvider.teacherClasses
+        : inChargeClasses;
     final cls = classesList.isNotEmpty && _selectedClass < classesList.length
         ? classesList[_selectedClass]
-        : AppData.classes.first;
+        : (classesList.isNotEmpty ? classesList.first : AppData.classes.first);
     final allStudents = teacherProvider.studentList;
     final classStudents = allStudents.where((s) {
       if (cls.classId != null && s.classId != null && s.classId != cls.classId) return false;
       if (cls.sectionId != null && s.sectionId != null && s.sectionId != cls.sectionId) return false;
       return true;
     }).toList();
-    final activeStudents = classStudents.isNotEmpty ? classStudents : allStudents;
+    final activeStudents = classStudents;
     final student = studentIdx < activeStudents.length ? activeStudents[studentIdx] : AppData.students.first;
     final ctrl = TextEditingController(text: studentIdx < _remarks.length ? (_remarks[studentIdx] ?? '') : '');
 
@@ -2848,10 +2921,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   void _showSaveDialog() {
     final teacherProvider = Provider.of<TeacherProvider>(context, listen: false);
-    final classesList = teacherProvider.teacherClasses;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final inChargeClasses = teacherProvider.teacherClasses.where((c) => c.isClassTeacher).toList();
+    final classesList = (authProvider.isAdminRole || (inChargeClasses.isEmpty && authProvider.isPrincipalRole))
+        ? teacherProvider.teacherClasses
+        : inChargeClasses;
     final cls = classesList.isNotEmpty && _selectedClass < classesList.length
         ? classesList[_selectedClass]
-        : AppData.classes.first;
+        : (classesList.isNotEmpty ? classesList.first : AppData.classes.first);
 
     final allStudents = teacherProvider.studentList;
     final classStudents = allStudents.where((s) {
@@ -2859,7 +2936,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (cls.sectionId != null && s.sectionId != null && s.sectionId != cls.sectionId) return false;
       return true;
     }).toList();
-    final activeStudents = classStudents.isNotEmpty ? classStudents : allStudents;
+    final activeStudents = classStudents;
 
     showDialog(
       context: context,
@@ -2942,9 +3019,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 'date': DateTime.now().toIso8601String().substring(0, 10),
                 if (cls.sectionId != null) 'section_id': cls.sectionId,
                 'attendance': List.generate(activeStudents.length, (idx) {
-                  final s = activeStudents[idx];
+                  final dynamic s = activeStudents[idx];
+                  final dynamic sId = s is Student ? s.id : (s is Map ? (s['id'] ?? s['student_id']) : null);
                   return {
-                    'student_id': s.id ?? (idx + 1),
+                    'student_id': sId ?? (idx + 1),
                     'status': idx < _status.length && _status[idx] == 0
                         ? 'present'
                         : (idx < _status.length && _status[idx] == 1
