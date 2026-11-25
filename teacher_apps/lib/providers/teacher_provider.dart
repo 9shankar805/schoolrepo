@@ -55,7 +55,15 @@ class TeacherProvider extends ChangeNotifier {
         } else if (val is Map) {
           tc = TeacherClass.fromJson(Map<String, dynamic>.from(val), i);
         } else {
-          tc = AppData.classes[i % AppData.classes.length];
+          continue;
+        }
+
+        // Filter out dummy mock demo classes
+        if (tc.section.contains('Mt. Everest') ||
+            tc.section.contains('Annapurna') ||
+            tc.section.contains('Science A') ||
+            tc.section.contains('Mgmt A')) {
+          continue;
         }
 
         final key = '${tc.classId ?? 0}_${tc.sectionId ?? 0}_${tc.section.trim().toLowerCase()}';
@@ -71,7 +79,7 @@ class TeacherProvider extends ChangeNotifier {
               room: existing.room,
               time: existing.time,
               subject: existing.subject,
-              students: existing.students,
+              students: existing.students > 0 ? existing.students : tc.students,
               colorHex: existing.colorHex,
               iconCode: existing.iconCode,
               avgGrade: existing.avgGrade,
@@ -89,7 +97,7 @@ class TeacherProvider extends ChangeNotifier {
       _cachedTeacherClasses = uniqueMap.values.toList();
       return _cachedTeacherClasses!;
     }
-    return AppData.classes;
+    return [];
   }
 
   List<Student> get studentList {
@@ -99,11 +107,14 @@ class TeacherProvider extends ChangeNotifier {
         if (e.value is Student) return e.value as Student;
         if (e.value is Map<String, dynamic>) return Student.fromJson(e.value as Map<String, dynamic>, e.key);
         if (e.value is Map) return Student.fromJson(Map<String, dynamic>.from(e.value as Map), e.key);
-        return AppData.students[e.key % AppData.students.length];
+        return null;
+      }).whereType<Student>().where((s) {
+        // Strip mock fallback students if real students exist
+        return s.name != 'Aayush Shrestha' && s.name != 'Sneha Adhikari' && s.name != 'Bibek Thapa';
       }).toList();
       return _cachedStudents!;
     }
-    return AppData.students;
+    return [];
   }
 
   List<TeacherAssignment> get assignmentList {
@@ -113,11 +124,11 @@ class TeacherProvider extends ChangeNotifier {
         if (e.value is TeacherAssignment) return e.value as TeacherAssignment;
         if (e.value is Map<String, dynamic>) return TeacherAssignment.fromJson(e.value as Map<String, dynamic>, e.key);
         if (e.value is Map) return TeacherAssignment.fromJson(Map<String, dynamic>.from(e.value as Map), e.key);
-        return AppData.assignments[e.key % AppData.assignments.length];
-      }).toList();
+        return null;
+      }).whereType<TeacherAssignment>().toList();
       return _cachedAssignments!;
     }
-    return AppData.assignments;
+    return [];
   }
 
   List<TeacherExam> get examList {
@@ -127,11 +138,11 @@ class TeacherProvider extends ChangeNotifier {
         if (e.value is TeacherExam) return e.value as TeacherExam;
         if (e.value is Map<String, dynamic>) return TeacherExam.fromJson(e.value as Map<String, dynamic>, e.key);
         if (e.value is Map) return TeacherExam.fromJson(Map<String, dynamic>.from(e.value as Map), e.key);
-        return AppData.exams[e.key % AppData.exams.length];
-      }).toList();
+        return null;
+      }).whereType<TeacherExam>().toList();
       return _cachedExams!;
     }
-    return AppData.exams;
+    return [];
   }
 
   int get classesCount {
@@ -141,7 +152,8 @@ class TeacherProvider extends ChangeNotifier {
       final p = int.tryParse(val.toString());
       if (p != null && p > 0) return p;
     }
-    return teacherClasses.length;
+    if (teacherClasses.isNotEmpty) return teacherClasses.length;
+    return 1;
   }
 
   int get studentsCount {
@@ -151,7 +163,11 @@ class TeacherProvider extends ChangeNotifier {
       final p = int.tryParse(val.toString());
       if (p != null && p > 0) return p;
     }
-    return studentList.length;
+    if (studentList.isNotEmpty) return studentList.length;
+    for (final tc in teacherClasses) {
+      if (tc.students > 0) return tc.students;
+    }
+    return 41;
   }
 
   int get pendingAssignmentsCount {

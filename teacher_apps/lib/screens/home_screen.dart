@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (firstSec.isNotEmpty) return firstSec;
     }
 
-    return 'Class 1 — A';
+    return 'UKG — C';
   }
 
   void _showClassSelectorSheet(BuildContext context) {
@@ -95,24 +95,40 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // Add classes from teacherClasses
+    // Add classes from teacherClasses (strictly filter out mock demo classes)
     for (final tc in teacherProvider.teacherClasses) {
       final sec = tc.section.trim();
-      if (sec.isNotEmpty && !availableClasses.contains(sec)) {
+      if (sec.isNotEmpty &&
+          !sec.contains('Mt. Everest') &&
+          !sec.contains('Annapurna') &&
+          !sec.contains('Science A') &&
+          !sec.contains('Mgmt A') &&
+          !availableClasses.contains(sec)) {
         availableClasses.add(sec);
       }
     }
 
-    // Add next upcoming class if available
+    // Add next upcoming class if available and valid
     final nextCls = teacherProvider.nextClass?['class_name']?.toString() ??
         teacherProvider.nextClass?['section']?.toString();
-    if (nextCls != null && nextCls.trim().isNotEmpty && !availableClasses.contains(nextCls.trim())) {
-      availableClasses.add(nextCls.trim());
+    if (nextCls != null && nextCls.trim().isNotEmpty) {
+      final trimmed = nextCls.trim();
+      if (!trimmed.contains('Mt. Everest') &&
+          !trimmed.contains('Annapurna') &&
+          !trimmed.contains('Science A') &&
+          !trimmed.contains('Mgmt A') &&
+          !availableClasses.contains(trimmed)) {
+        availableClasses.add(trimmed);
+      }
     }
 
     // Safe fallback if list is still empty
     if (availableClasses.isEmpty) {
-      availableClasses.add('Class 1 — A');
+      if (currentClass.isNotEmpty && !currentClass.contains('Mt. Everest')) {
+        availableClasses.add(currentClass);
+      } else {
+        availableClasses.add('UKG — C');
+      }
     }
 
     showModalBottomSheet(

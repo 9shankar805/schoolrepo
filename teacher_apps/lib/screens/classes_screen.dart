@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../data/app_data.dart';
 import '../widgets/common_widgets.dart';
 import '../providers/teacher_provider.dart';
+import '../providers/auth_provider.dart';
 import 'students_screen.dart';
 import 'attendance_screen.dart';
 import 'assignments_screen.dart';
@@ -53,9 +54,35 @@ class _ClassesScreenState extends State<ClassesScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final teacher = Provider.of<TeacherProvider>(context);
-    final classList = teacher.teacherClasses.isNotEmpty
-        ? teacher.teacherClasses
-        : AppData.classes;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final incharge = auth.classInchargeInfo;
+    final List<TeacherClass> classList;
+    if (teacher.teacherClasses.isNotEmpty) {
+      classList = teacher.teacherClasses.where((c) =>
+        !c.section.contains('Mt. Everest') &&
+        !c.section.contains('Annapurna') &&
+        !c.section.contains('Science A') &&
+        !c.section.contains('Mgmt A')
+      ).toList();
+    } else if (incharge != null) {
+      final cName = incharge['class_name']?.toString() ?? 'UKG';
+      final sName = incharge['section_name']?.toString() ?? 'C';
+      classList = [
+        TeacherClass(
+          name: 'Class Teacher',
+          section: '$cName — $sName',
+          room: 'Room 101',
+          time: '10:00 AM - 04:00 PM',
+          subject: 'All Subjects',
+          students: teacher.studentsCount > 0 ? teacher.studentsCount : 41,
+          isClassTeacher: true,
+          classId: incharge['class_id'] is int ? incharge['class_id'] : int.tryParse(incharge['class_id']?.toString() ?? ''),
+          sectionId: incharge['section_id'] is int ? incharge['section_id'] : int.tryParse(incharge['section_id']?.toString() ?? ''),
+        ),
+      ];
+    } else {
+      classList = [];
+    }
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,

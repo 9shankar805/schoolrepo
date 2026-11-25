@@ -527,13 +527,13 @@ class ApiService {
     final res = await _post(
       '$_baseUrl/exams/marks',
       marksData,
-      timeout: const Duration(seconds: 60),
+      timeout: const Duration(seconds: 120),
     );
     if (!res.success && (res.statusCode == 404 || res.statusCode == 405)) {
       return _put(
         '$_baseUrl/exams/$examId/marks',
         marksData,
-        timeout: const Duration(seconds: 60),
+        timeout: const Duration(seconds: 120),
       );
     }
     return res;

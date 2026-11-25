@@ -36,16 +36,24 @@ class _StudentsScreenState extends State<StudentsScreen> {
     final opts = <String>['All'];
     if (teacher.teacherClasses.isNotEmpty) {
       for (final c in teacher.teacherClasses) {
-        if (!opts.contains(c.section)) opts.add(c.section);
-      }
-    } else {
-      for (final c in AppData.classes) {
-        if (!opts.contains(c.section)) opts.add(c.section);
+        if (!c.section.contains('Mt. Everest') &&
+            !c.section.contains('Annapurna') &&
+            !c.section.contains('Science A') &&
+            !c.section.contains('Mgmt A') &&
+            !opts.contains(c.section)) {
+          opts.add(c.section);
+        }
       }
     }
     for (final s in teacher.studentList) {
       final sec = s.displayClassSection;
-      if (sec.isNotEmpty && !sec.startsWith('A') && !sec.startsWith('B') && !sec.startsWith('C') && !opts.contains(sec)) {
+      if (sec.isNotEmpty &&
+          !sec.contains('Mt. Everest') &&
+          !sec.contains('Annapurna') &&
+          !sec.startsWith('A') &&
+          !sec.startsWith('B') &&
+          !sec.startsWith('C') &&
+          !opts.contains(sec)) {
         opts.add(sec);
       }
     }
